@@ -457,8 +457,8 @@ router.put('/:id/face', [
 
 // @route   DELETE /api/students/:id
 // @desc    Permanently delete student and all related data (User, Attendance, Subject links)
-// @access  Private (SuperAdmin only)
-router.delete('/:id', auth, authorize('superadmin'), async (req, res) => {
+// @access  Private (Admin, SuperAdmin)
+router.delete('/:id', auth, authorize('admin', 'superadmin'), async (req, res) => {
   try {
     console.log('=== DELETE STUDENT REQUEST ===');
     console.log('Student ID:', req.params.id);

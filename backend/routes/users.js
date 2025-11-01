@@ -174,21 +174,53 @@ router.put('/:id/password', [
 });
 
 // @route   DELETE /api/users/:id
-// @desc    Delete user
-// @access  Private (SuperAdmin only)
-router.delete('/:id', auth, authorize('superadmin'), async (req, res) => {
+// @desc    Permanently delete user and related data
+// @access  Private (Admin, SuperAdmin)
+router.delete('/:id', auth, authorize('admin', 'superadmin'), async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
-    
-    if (!user) {
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: 'User deleted successfully' });
+    // Admins cannot delete SuperAdmins
+    if (req.user.role === 'admin' && targetUser.role === 'superadmin') {
+      return res.status(403).json({ message: 'Admins cannot delete SuperAdmin accounts' });
+    }
+
+    // If student, cascade delete Student, Attendance, and subject links
+    if (targetUser.role === 'student') {
+      const StudentModel = require('../models/Student');
+      const Attendance = require('../models/Attendance');
+      const Subject = require('../models/Subject');
+
+      const student = await StudentModel.findOne({ userId: targetUser._id });
+      if (student) {
+        await Subject.updateMany(
+          { students: student._id },
+          { $pull: { students: student._id } }
+        );
+        await Attendance.deleteMany({ studentId: student._id });
+        await StudentModel.findByIdAndDelete(student._id);
+      }
+    }
+
+    // If admin/faculty, remove as faculty from subjects
+    if (targetUser.role === 'admin') {
+      const Subject = require('../models/Subject');
+      await Subject.updateMany(
+        { faculty: targetUser._id },
+        { $set: { faculty: null } }
+      );
+    }
+
+    // Finally delete the user account (credentials invalidated)
+    await User.findByIdAndDelete(targetUser._id);
+
+    return res.json({ message: 'User and related data deleted permanently' });
   } catch (error) {
     console.error('Delete user error:', error);
-    res.status(500).json({ message: 'Server error' });
+    return res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

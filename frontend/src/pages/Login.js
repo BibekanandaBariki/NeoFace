@@ -152,12 +152,7 @@ const Login = () => {
                 color: 'rgba(255, 255, 255, 0.7)'
               }}
             >
-              <p style={{ marginBottom: '0.75rem', fontWeight: 'bold', color: 'rgba(255, 255, 255, 0.9)' }}>Login Credentials:</p>
-              <div style={{ marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
-                <p style={{ marginBottom: '0.25rem', fontWeight: '600' }}>SuperAdmin:</p>
-                <p style={{ marginLeft: '0.5rem', fontSize: '0.8rem' }}>Email: bibekbariki786@gmail.com</p>
-                <p style={{ marginLeft: '0.5rem', fontSize: '0.8rem' }}>Password: Attitude321@11</p>
-              </div>
+              <p style={{ marginBottom: '0.75rem', fontWeight: 'bold', color: 'rgba(255, 255, 255, 0.9)' }}>Login Info:</p>
               <div>
                 <p style={{ marginBottom: '0.25rem', fontWeight: '600' }}>Students:</p>
                 <p style={{ marginLeft: '0.5rem', fontSize: '0.8rem', lineHeight: '1.5' }}>
