@@ -1,0 +1,365 @@
+#################################################################################
+# Multi-University Automated Attendance System - Permanent Workflow
+#
+# Core Principles:
+# 1. Role-Based Access Control (RBAC): Every action, view, and piece of data is
+#    strictly governed by the user's role and their position in the hierarchy.
+# 2. Data Isolation: University A's data is completely invisible and inaccessible
+#    to University B, enforced at the database and application level.
+# 3. Auditability: All critical actions (especially by SuperAdmins) are logged
+#    with user ID, timestamp, and reason.
+# 4. Semester-Centric Operations: All academic activities (timetables, attendance,
+#    eligibility) are bound within a defined semester.
+#################################################################################
+
+#################################################################################
+## 1. User Roles & Permission Matrix
+#################################################################################
+# This matrix defines the granular permissions for each role.
+# (C: Create, R: Read, U: Update, D: Delete, O: Override/Approve)
+
++------------------+-------+-------+--------------+---------+---------+
+|      Entity      | Super | Uni    | Campus Admin | Teacher | Student |
+|                  | Admin  | Admin  |              |         |         |
++------------------+-------+-------+--------------+---------+---------+
+| University       | CRUD  | N/A   | N/A          | N/A     | N/A     |
+| Campus           | CRUD  | CRUD  | R            | R (Own) | R (Own) |
+| School/Course    | CRUD  | CRUD  | R            | R (Own) | R (Own) |
+| Batch/Semester   | CRUD  | CRUD  | R            | R (Own) | R (Own) |
+| Section          | CRUD  | CRUD  | CRUD         | R (Own) | R (Own) |
+| Subject (PP/PR)  | CRUD  | CRUD  | CRUD         | R (Own) | R (Own) |
+| Timetable        | CRUDO | CRUD  | R            | R (Own) | R (Own) |
+| User (Admin)     | CRUD  | R     | N/A          | N/A     | N/A     |
+| User (Teacher)   | CRUD  | CRUD  | CRUD         | R (Self)| N/A     |
+| User (Student)   | CRUD  | CRUD  | CRUD         | R (Class)| R(Self)|
+| Attendance       | CRUDO | R     | R            | CRUD(Own)| R (Own)|
+| Admit Cards      | CRUDO | R     | CRUDO        | N/A     | R       |
+| System Requests  | CRUDO | R     | N/A          | C       | N/A     |
++------------------+-------+-------+--------------+---------+---------+
+# Legend:
+# N/A: Not Applicable. User has no interaction with this entity.
+# R(Own): Can only read data related to their own context (e.g., their classes, their profile).
+# CRUD(Own): Teacher can mark attendance for their own classes only.
+# CRUDO: Full permissions including special Override or Approval functions.
+
+#################################################################################
+## 2. System Data Hierarchy (Immutable)
+#################################################################################
+University
+|-- Campus
+|   |-- School
+|   |   |-- Course
+|   |   |   |-- Batch
+|   |   |   |   `-- Semester (e.g., Fall 2024, Spring 2025)
+|   |   |   |       `-- Section
+|   |   |   |           |-- Student
+|   |   |   |           `-- Subject
+|   |   |   |               |-- Lecture (PP)
+|   |   |   |               |-- Practical (PR)
+|   |   |   |               `-- Tutorial (TUT)
+|   |   `-- Teachers
+|   `-- Campus Admin
+`-- University Admin
+
+#################################################################################
+## 3. Core Workflows
+#################################################################################
+
+### 3.A. Onboarding & University Setup
+1.  SuperAdmin logs in.
+2.  Navigates to "System Administration" -> "Universities".
+3.  Clicks "Create University".
+4.  Fills in University details (Name, Address, etc.).
+5.  Creates the primary University Admin account (Email, Temporary Password).
+6.  System provisions a new, isolated data space for the university.
+7.  University Admin receives credentials and logs in to begin setup.
+
+### 3.B. Institutional Structure Creation (University Admin)
+1.  University Admin logs in.
+2.  Navigates to "Institution Management".
+3.  Creates entities in hierarchical order:
+    a.  Create Campus(s).
+    b.  For each Campus, create School(s) (e.g., School of Engineering).
+    c.  For each School, create Course(s) (e.g., B.Tech CSE).
+    d.  For each Course, create Batch(es) based on admission year.
+    e.  For each Batch, defines Semesters (e.g., "Semester 1", "Semester 2") with start/end dates.
+4.  Navigates to "User Management" -> "Campus Admins".
+5.  Creates Campus Admin accounts and assigns them to specific campuses.
+
+### 3.C. User & Academic Management (Campus Admin)
+1.  Campus Admin logs in.
+2.  Creates Teacher accounts and assigns them to Schools and Subjects.
+3.  Creates Student accounts, assigning them to a specific Section within a Semester.
+4.  Defines Subjects for each course, specifying if they have Lecture (PP), Practical (PR), or Tutorial (TUT) components.
+5.  Creates Timetables for the current Semester, assigning Teachers to specific subject slots (PP/PR/TUT) for each Section.
+
+### 3.D. The Daily Attendance Flow (Teacher)
+1.  At class start time, Teacher logs in and navigates to "My Classes".
+2.  Selects the active class for the current time slot (e.g., "B.Tech CSE - Sec A - Physics (PR)").
+3.  Clicks "Start Attendance Session".
+4.  System initializes the classroom camera and the Face Recognition service.
+5.  **Detection & Verification:**
+    a.  System continuously scans for faces.
+    b.  Upon detection, it extracts facial features.
+    c.  It matches these features against the enrolled students for *this specific class*.
+    d.  A successful match (above confidence threshold) marks the student as "Present" and displays their name on the live feed and a growing "Present List".
+6.  **Session End:**
+    a.  After the class duration ends (or the teacher manually stops it), the session concludes.
+    b.  All students not marked "Present" are automatically marked "Absent".
+    c.  Teacher can review the final list, add manual remarks (e.g., "Late"), and submit.
+7.  **Data Synchronization:** The attendance record (Student ID, Subject Type, Date, Time Slot, Status) is atomically updated in the database.
+
+### 3.E. The Admit Card Generation Workflow (Campus Admin)
+1.  Campus Admin logs in and navigates to "Examination" -> "Admit Card Generation".
+2.  Selects the examination parameters: Campus, School, Course, Batch, and Semester.
+3.  Clicks "Run Eligibility Check".
+4.  **System Logic (Executed for each student in the selection):**
+    a.  Calculate `overall_attendance_percentage` for the semester.
+    b.  For each subject in the semester:
+        i.  Calculate `subject_attendance_percentage` by aggregating attendance from all its components (PP, PR, TUT).
+    c.  **Eligibility Rule:** `IF (overall_attendance >= 75%) AND (ALL subject_attendances >= 75%) THEN student is "Eligible" ELSE student is "Not Eligible"`.
+5.  **System Output:** The screen displays two distinct tables:
+    a.  **Eligible Students:** A list of students who meet the criteria.
+    b.  **Not Eligible Students:** A list of students who do not. This table has a "View Details" button.
+6.  Admin can click "View Details" for any ineligible student to see a breakdown, e.g., "Overall Attendance: 78%, Physics: 72%, Chemistry: 81%".
+7.  Once satisfied, the Admin selects the "Eligible Students" table and clicks "Generate Admit Cards".
+8.  System generates a PDF admit card for each eligible student, which can be downloaded individually or as a combined ZIP file.
+
+### 3.F. The SuperAdmin Override & Request Workflow
+1.  **Retake Attendance:**
+    a.  SuperAdmin logs in -> "System Administration" -> "Attendance Overrides".
+    b.  Uses filters to locate the specific class (University -> Campus -> Section -> Subject -> Date -> Time Slot).
+    c.  The system loads the *original submitted attendance* for that slot.
+    d.  SuperAdmin can change the status of any student (Present/Absent).
+    e.  A mandatory "Reason for Override" text field must be filled.
+    f.  Upon submission:
+        i.  The original record is archived with a reference to the override.
+        ii. A new attendance record is created with the SuperAdmin's changes.
+        iii. An immutable audit log entry is created: `SuperAdmin [ID] overrode attendance for [Class] on [Date] at [Time]. Reason: [Reason]`.
+2.  **Accept Requests:**
+    a.  Other users (e.g., a University Admin) can create a "Request" (e.g., "Request to delete inactive Campus X").
+    b.  SuperAdmin navigates to "System Administration" -> "Pending Requests".
+    c.  A dashboard lists all pending requests with details, requester, and date.
+    d.  SuperAdmin can "Approve" or "Deny" each request, adding a comment.
+    e.  The system logs the decision and notifies the original requester.
+
+#################################################################################
+## 4. Role-Based Portal Views (Visual Data & Access Control)
+#################################################################################
+# What each user sees upon logging in is tailored to their role and permissions.
+
+### SuperAdmin Portal
+*   **Dashboard:** Global system statistics, active users count, server health, a list of pending requests.
+*   **Navigation:** System Administration, University Management, Global User Search, Audit Logs, Settings.
+*   **No university-specific data is shown by default.** The SuperAdmin must choose a university to inspect.
+
+### University Admin Portal
+*   **Dashboard:** Statistics for *their university only* (student/teacher count, average attendance).
+*   **Navigation:** Institution Management (Campuses, Schools), User Management (Campus Admins, Teachers, Students), Academic Calendar, Semester Management.
+*   **Cannot see or manage data from other universities.**
+
+### Campus Admin Portal
+*   **Dashboard:** Statistics for *their campus only*.
+*   **Navigation:** Teacher/Student Management, Subject Management, Timetable View, **Examination -> Admit Card Generation**.
+*   **Can only view and manage data for the campus they are assigned to.**
+
+### Teacher Portal
+*   **Dashboard:** Today's schedule, a quick attendance summary for the week.
+*   **Navigation:** My Classes, **Mark Attendance**, My Students (list of students in their classes), Attendance Reports.
+*   **Only sees their own classes, timetables, and student lists.**
+
+### Student Portal
+*   **Dashboard:** A clear summary of attendance.
+    *   **Overall Attendance:** A large, prominent percentage for the current semester.
+    *   **Subject-wise Attendance:** A list of all subjects with their individual attendance percentages, color-coded (e.g., Green for >75%, Red for <75%).
+    *   **Recent Activity:** A log of the last few classes attended.
+*   **Navigation:**
+    *   **Attendance:** A detailed view where they can see **Day-wise Attendance** on a calendar, and filter by subject.
+    *   **Timetable:** Their personal, weekly class schedule.
+    *   **My Profile:** Personal details, ability to update their photo for face recognition.
+    *   **Examination:** A section to **View and Download** their generated admit card.
+
+#################################################################################
+## 5. Data & Security Model Summary
+#################################################################################
+*   **Authentication:** Secure login with JWT tokens. MFA mandatory for SuperAdmins.
+*   **Authorization:** Middleware on every API endpoint checks the user's role and permissions from the matrix before processing the request.
+*   **Data Isolation:** All database queries are automatically filtered by `university_id` and `campus_id` based on the logged-in user's context, unless the user is a SuperAdmin.
+*   **Audit Trail:** A dedicated, append-only log table records all critical actions (create, delete, override) with user ID, timestamp, IP address, and change details.
+
+#################################################################################
+# End of Permanent Workflow Document
+#################################################################################
+
+#################################################################################
+# Web Application UI Workflow & Data Mapping
+#################################################################################
+#
+# This document details the user interface (UI) flow for each user role.
+# It explicitly maps frontend fields and actions to their corresponding backend
+# requirements to ensure seamless integration.
+#
+#################################################################################
+
+#################################################################################
+## 1. Student UI Workflow: Onboarding & Daily Use
+#################################################################################
+
+### 1.1. Initial Registration & Face Enrollment
+The student begins by accessing the public registration URL provided by their institution.
+
+**UI Screen: Student Registration Form**
+
+*   **Visuals:** Clean form with institution logo. Step-by-step wizard or a single-page form with clear sections.
+*   **Data to be Filled (Frontend -> Backend Mapping):**
+
+| Frontend Label & Field Type             | Backend API Endpoint      | Backend Data Model & Validation                               |
+| --------------------------------------- | ------------------------- | ------------------------------------------------------------ |
+| University (Dropdown)                   | POST `/api/auth/register` | `university_id` (UUID, must be valid)                        |
+| Campus (Dropdown, populated by University) |                           | `campus_id` (UUID, must belong to selected university)       |
+| School (Dropdown, populated by Campus)  |                           | `school_id` (UUID, must belong to selected campus)           |
+| Course (Dropdown, populated by School)  |                           | `course_id` (UUID, must belong to selected school)           |
+| Batch (Dropdown, populated by Course)   |                           | `batch_id` (UUID, must belong to selected course)            |
+| Semester (Dropdown, populated by Batch) |                           | `semester_id` (UUID, must belong to selected batch)          |
+| Section (Dropdown, populated by Semester) |                          | `section_id` (UUID, must belong to selected semester)        |
+| First Name (Text Input)                 |                           | `first_name` (String, Required, Alphabetic)                   |
+| Last Name (Text Input)                  |                           | `last_name` (String, Required, Alphabetic)                    |
+| Student ID (Text Input)                 |                           | `student_id` (String, Required, Unique within University)     |
+| Date of Birth (Date Picker)             |                           | `date_of_birth` (Date, Required)                             |
+| Email (Email Input)                     |                           | `email` (String, Required, Unique, Valid Email Format)        |
+| Phone Number (Text Input)               |                           | `phone` (String, Required, Numeric Format)                   |
+| Password (Password Input)               |                           | `password` (Hashed on Backend, Required, Min 8 chars)        |
+| Confirm Password (Password Input)        |                           | `password_confirmation` (Must match `password`)               |
+| **Create Account** (Button)             |                           | *On Success:* Creates user account, sends verification email. |
+
+---
+
+**UI Screen: Face Enrollment (Mandatory after successful registration)**
+
+*   **Visuals:** A full-screen or large modal view. Live video feed from the user's webcam. Clear, simple instructions.
+*   **Workflow:**
+    1.  **Instruction Screen:** "Let's set up your face for automatic attendance. Click 'Start' when ready. Ensure good lighting and your face is clearly visible."
+    2.  **Capture Screen:**
+        *   Live video feed with an oval overlay to guide face positioning.
+        *   System automatically captures 3-5 images as the user slightly moves their head (left, right, center).
+        *   A progress bar shows "Capturing...".
+    3.  **Processing Screen:** "Processing your facial data..." with a spinner.
+    4.  **Success/Pending Screen:** "Thank you! Your face has been registered for approval. You will be notified once your campus administrator approves it. You can log in to view your status."
+
+*   **Frontend -> Backend Mapping:**
+
+| Frontend Action                               | Backend API Endpoint                 | Backend Logic                                                                                             |
+| --------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| On "Start" click, access webcam               | N/A                                  | N/A                                                                                                       |
+| Capture image frames (Blob data)              | POST `/api/students/me/face-enroll`  | Receives image blobs. Runs face detection, feature extraction, and creates a face embedding vector.       |
+| Submit captured data                          |                                      | Stores the face template in the `face_templates` table linked to the student's ID. Sets `status` to 'PENDING'. |
+
+---
+
+### 1.2. Student Dashboard & Portal
+
+*   **Dashboard View:**
+    *   **Top Section:** Large, clear display of **Overall Semester Attendance** (e.g., "87%"). Color-coded (Green > 75%, Yellow 60-75%, Red < 60%).
+    *   **Middle Section:** A grid or list of **Subject-wise Attendance**. Each subject shows its name and attendance percentage (e.g., "Physics (PP): 92%", "Chemistry (PR): 78%").
+    *   **Bottom Section:** A mini-calendar view showing **Day-wise Attendance** for the current month (e.g., green dots for present, red for absent).
+*   **Navigation Menu:**
+    *   **Attendance:** Detailed view with filters for subject and date range.
+    *   **Timetable:** Weekly view of their class schedule.
+    *   **Profile:**
+        *   Shows personal details.
+        *   Shows **Face Registration Status**: "Approved" (Green), "Pending" (Yellow), "Rejected" (Red with reason).
+        *   If "Pending" or "Rejected", provides a button to "Re-enroll Face".
+
+#################################################################################
+## 2. Campus Admin UI Workflow: Management & Approval
+#################################################################################
+
+### 2.1. Student Management & Face Approval
+
+*   **UI Screen: Student Management List**
+    *   A searchable and filterable table of all students in the campus.
+    *   **Columns:** Student ID, Photo, Name, Email, Section, **Face Status** (Icon-based: ✅ Approved, ⏳ Pending, ❌ Rejected).
+    *   **Actions Column:** `View` | `Edit` | `Approve Face` (only visible if status is Pending).
+
+*   **UI Screen: Face Approval Modal (Triggered by "Approve Face" action)**
+    *   **Left Side:** Student's details (Name, ID, Photo from registration).
+    *   **Right Side:** The 3-5 face images captured during enrollment.
+    *   **Action Buttons:**
+        *   **Approve:** A prominent, positive action button.
+        *   **Reject:** A secondary button that, when clicked, reveals a "Reason for Rejection" text area.
+
+*   **Frontend -> Backend Mapping:**
+
+| Frontend Action                 | Backend API Endpoint                    | Backend Logic                                                                                             |
+| ------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Click "Approve" in modal        | PUT `/api/students/{id}/face-approve`   | Updates the student's `face_template.status` from 'PENDING' to 'APPROVED'. The student can now be recognized. |
+| Click "Reject" with reason      | PUT `/api/students/{id}/face-reject`    | Updates `face_template.status` to 'REJECTED', stores the rejection reason. Triggers a notification to the student. |
+
+---
+
+### 2.2. Admit Card Generation
+
+*   **UI Screen: Admit Card Generator**
+    *   **Filter Section:** Dropdowns for `Campus` (pre-selected), `School`, `Course`, `Batch`, `Semester`. A "Check Eligibility" button.
+    *   **Results Section:** Two distinct tables appear after the check.
+        1.  **Table 1: Eligible Students:** Columns: Photo, Student ID, Name. Action: `Select All` | `Generate Admit Cards`.
+        2.  **Table 2: Not Eligible Students:** Columns: Photo, Student ID, Name, **Reason for Ineligibility** (e.g., "Overall Attendance: 72%", "Physics (PR): 68%"). Action: `View Details` (shows a full breakdown).
+
+*   **Frontend -> Backend Mapping:**
+
+| Frontend Action                       | Backend API Endpoint                         | Backend Logic                                                                                             |
+| ------------------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Click "Check Eligibility"             | POST `/api/examination/check-eligibility`    | Receives filters. Runs the complex eligibility logic (overall >= 75% AND all subjects >= 75%). Returns two lists of students. |
+| Click "Generate Admit Cards"          | POST `/api/examination/generate-admit-cards` | Receives a list of eligible student IDs. Generates a PDF for each, merges into a ZIP file, and returns a download URL. |
+
+#################################################################################
+## 3. Teacher UI Workflow: Marking Attendance
+#################################################################################
+
+*   **UI Screen: Teacher Dashboard**
+    *   A card-based view of "Today's Classes". Each card shows the Subject, Section, Time, and Room.
+    *   If it's time for a class, the card shows a green "Start Attendance" button.
+
+*   **UI Screen: Live Attendance Session**
+    *   **Main Area:** Live video feed from the classroom camera.
+    *   **Side Panel:** A list titled "Present Students". As students are recognized, their names and profile pictures appear in this list in real-time.
+    *   **Header:** Shows the Subject, Section, and a timer for the session.
+    *   **Footer:** A "Stop Session & Finalize" button.
+
+*   **UI Screen: Attendance Review (After session ends)**
+    *   A final list of all students in the class.
+    *   Columns: Student Photo, Name, Status (Present/Absent), Remarks (editable text field).
+    *   "Submit Attendance" button.
+
+*   **Frontend -> Backend Mapping:**
+
+| Frontend Action                           | Backend API Endpoint                    | Backend Logic                                                                                             |
+| ----------------------------------------- | --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Click "Start Attendance"                  | POST `/api/attendance/session/start`    | Creates a new attendance session record. Provides a token to the frontend to stream video to the recognition service. |
+| On successful face recognition (backend event) | N/A (Webhook/SSE)                       | Backend sends a real-time event to the teacher's UI with the student's name and ID to be added to the "Present" list. |
+| Click "Submit Attendance"                 | POST `/api/attendance/submit`           | Receives the final list of student statuses. Saves the attendance records atomically. Marks the session as complete. |
+
+#################################################################################
+## 4. SuperAdmin UI Workflow: System Oversight
+#################################################################################
+
+*   **UI Screen: SuperAdmin Dashboard**
+    *   High-level widgets: Total Universities, Total Users, System Load.
+    *   A section for "Pending Requests" (e.g., a University Admin requesting to delete a campus).
+
+*   **UI Screen: Attendance Override**
+    *   **Filter Section:** A multi-level filter to pinpoint the exact class: `University`, `Campus`, `Section`, `Subject`, `Date`, `Time Slot`. A "Search" button.
+    *   **Results Section:** Displays the original attendance roster for that slot.
+    *   **Interaction:** The SuperAdmin can click on any student's status to toggle between "Present" and "Absent".
+    *   **Action:** A "Submit Override" button, which only becomes active after a mandatory "Reason for Override" text area is filled.
+
+*   **Frontend -> Backend Mapping:**
+
+| Frontend Action                         | Backend API Endpoint                     | Backend Logic                                                                                             |
+| --------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Use filters and click "Search"          | GET `/api/superadmin/attendance/record`  | Retrieves the specific, immutable attendance record for the given parameters.                              |
+| Submit Override with reason             | PUT `/api/superadmin/attendance/override`| Archives the original record. Creates a new record with the updated data. Logs the action with SuperAdmin ID and reason in the audit trail. |
+
+#################################################################################
+# End of UI Workflow Document
+#################################################################################

@@ -1,0 +1,672 @@
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import GlassCard from './GlassCard';
+
+const SuperAdminOverride = () => {
+  const [universities, setUniversities] = useState([]);
+  const [campuses, setCampuses] = useState([]);
+  const [schools, setSchools] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [batches, setBatches] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [attendanceData, setAttendanceData] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [newStatus, setNewStatus] = useState('present');
+  const [remarks, setRemarks] = useState('');
+  const [overrideReason, setOverrideReason] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [overriding, setOverriding] = useState(false);
+  const [filters, setFilters] = useState({
+    university: '',
+    campus: '',
+    school: '',
+    program: '',
+    course: '',
+    batch: '',
+    section: '',
+    subject: '',
+    date: ''
+  });
+
+  useEffect(() => {
+    fetchUniversities();
+    fetchCampuses();
+    fetchSchools();
+    fetchPrograms();
+    fetchCourses();
+    fetchBatches();
+    fetchSubjects();
+  }, []);
+
+  const fetchUniversities = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/universities', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setUniversities(data);
+      }
+    } catch (error) {
+      console.error('Error fetching universities:', error);
+    }
+  };
+
+  const fetchCampuses = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/campus', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCampuses(data);
+      }
+    } catch (error) {
+      console.error('Error fetching campuses:', error);
+    }
+  };
+
+  const fetchSchools = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/schools', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSchools(data);
+      }
+    } catch (error) {
+      console.error('Error fetching schools:', error);
+    }
+  };
+
+  const fetchPrograms = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/programs', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPrograms(data);
+      }
+    } catch (error) {
+      console.error('Error fetching programs:', error);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/courses', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCourses(data);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
+
+  const fetchBatches = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/batches', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setBatches(data);
+      }
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+    }
+  };
+
+  const fetchSubjects = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/subjects', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSubjects(data);
+      }
+    } catch (error) {
+      console.error('Error fetching subjects:', error);
+    }
+  };
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const searchAttendance = async () => {
+    // Validate required filters
+    if (!filters.university || !filters.campus || !filters.school || 
+        !filters.program || !filters.course || !filters.batch || 
+        !filters.section || !filters.subject || !filters.date) {
+      alert('Please select all filters');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const queryParams = new URLSearchParams({
+        university: filters.university,
+        campus: filters.campus,
+        school: filters.school,
+        program: filters.program,
+        course: filters.course,
+        batch: filters.batch,
+        section: filters.section,
+        subject: filters.subject,
+        date: filters.date
+      });
+
+      const response = await fetch(`/api/superadmin/attendance/record?${queryParams}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAttendanceData(data);
+      } else {
+        const error = await response.json();
+        alert(`Error searching attendance: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error searching attendance:', error);
+      alert('Failed to search attendance');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOverride = async () => {
+    if (!selectedStudent || !overrideReason) {
+      alert('Please select a student and provide an override reason');
+      return;
+    }
+
+    try {
+      setOverriding(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch('/api/superadmin/attendance/override', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          subject: filters.subject,
+          date: filters.date,
+          timeSlot: attendanceData?.timeSlot,
+          studentId: selectedStudent.student._id,
+          newStatus: newStatus,
+          remarks: remarks,
+          overrideReason: overrideReason
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert('Attendance overridden successfully!');
+        // Refresh the attendance data
+        searchAttendance();
+        // Reset form
+        setSelectedStudent(null);
+        setNewStatus('present');
+        setRemarks('');
+        setOverrideReason('');
+      } else {
+        const error = await response.json();
+        alert(`Error overriding attendance: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Error overriding attendance:', error);
+      alert('Failed to override attendance');
+    } finally {
+      setOverriding(false);
+    }
+  };
+
+  // Filter data based on selections
+  const filteredCampuses = campuses.filter(campus => 
+    !filters.university || campus.university?._id === filters.university
+  );
+
+  const filteredSchools = schools.filter(school => 
+    (!filters.university || school.university?._id === filters.university) &&
+    (!filters.campus || school.campus?._id === filters.campus)
+  );
+
+  const filteredPrograms = programs.filter(program => 
+    (!filters.university || program.university?._id === filters.university) &&
+    (!filters.campus || program.campus?._id === filters.campus) &&
+    (!filters.school || program.school?._id === filters.school)
+  );
+
+  const filteredCourses = courses.filter(course => 
+    (!filters.university || course.university?._id === filters.university) &&
+    (!filters.campus || course.campus?._id === filters.campus) &&
+    (!filters.school || course.school?._id === filters.school) &&
+    (!filters.program || course.program?._id === filters.program)
+  );
+
+  const filteredBatches = batches.filter(batch => 
+    (!filters.university || batch.university?._id === filters.university) &&
+    (!filters.campus || batch.campus?._id === filters.campus) &&
+    (!filters.school || batch.school?._id === filters.school) &&
+    (!filters.program || batch.program?._id === filters.program) &&
+    (!filters.course || batch.course?._id === filters.course)
+  );
+
+  const filteredSubjects = subjects.filter(subject => 
+    (!filters.university || subject.university?._id === filters.university) &&
+    (!filters.campus || subject.campus?._id === filters.campus) &&
+    (!filters.school || subject.school?._id === filters.school) &&
+    (!filters.program || subject.program?._id === filters.program) &&
+    (!filters.course || subject.course?._id === filters.course)
+  );
+
+  return (
+    <div className="p-6">
+      <h2 className="text-2xl font-bold text-white mb-6">SuperAdmin Attendance Override</h2>
+      
+      <GlassCard className="mb-6 p-6">
+        <h3 className="text-xl font-semibold text-white mb-4">Search Attendance Record</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">University *</label>
+            <select
+              name="university"
+              value={filters.university}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select University</option>
+              {universities.map(university => (
+                <option key={university._id} value={university._id}>
+                  {university.name} ({university.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Campus *</label>
+            <select
+              name="campus"
+              value={filters.campus}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!filters.university}
+            >
+              <option value="">Select Campus</option>
+              {filteredCampuses.map(campus => (
+                <option key={campus._id} value={campus._id}>
+                  {campus.name} ({campus.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">School *</label>
+            <select
+              name="school"
+              value={filters.school}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!filters.campus}
+            >
+              <option value="">Select School</option>
+              {filteredSchools.map(school => (
+                <option key={school._id} value={school._id}>
+                  {school.name} ({school.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Program *</label>
+            <select
+              name="program"
+              value={filters.program}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!filters.school}
+            >
+              <option value="">Select Program</option>
+              {filteredPrograms.map(program => (
+                <option key={program._id} value={program._id}>
+                  {program.name} ({program.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Course *</label>
+            <select
+              name="course"
+              value={filters.course}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!filters.program}
+            >
+              <option value="">Select Course</option>
+              {filteredCourses.map(course => (
+                <option key={course._id} value={course._id}>
+                  {course.name} ({course.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Batch *</label>
+            <select
+              name="batch"
+              value={filters.batch}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!filters.course}
+            >
+              <option value="">Select Batch</option>
+              {filteredBatches.map(batch => (
+                <option key={batch._id} value={batch._id}>
+                  {batch.year}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Section *</label>
+            <input
+              type="text"
+              name="section"
+              value={filters.section}
+              onChange={handleFilterChange}
+              placeholder="Enter section (e.g., A, B)"
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Subject *</label>
+            <select
+              name="subject"
+              value={filters.subject}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={!filters.course}
+            >
+              <option value="">Select Subject</option>
+              {filteredSubjects.map(subject => (
+                <option key={subject._id} value={subject._id}>
+                  {subject.name} ({subject.code})
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Date *</label>
+            <input
+              type="date"
+              name="date"
+              value={filters.date}
+              onChange={handleFilterChange}
+              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div className="flex items-end lg:col-span-2">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={searchAttendance}
+              disabled={loading || !filters.university || !filters.campus || !filters.school || 
+                       !filters.program || !filters.course || !filters.batch || 
+                       !filters.section || !filters.subject || !filters.date}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Searching...' : 'Search Attendance'}
+            </motion.button>
+          </div>
+        </div>
+      </GlassCard>
+
+      {attendanceData && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Attendance Summary */}
+          <GlassCard className="p-6 lg:col-span-1">
+            <h3 className="text-xl font-semibold text-white mb-4">Session Details</h3>
+            
+            <div className="space-y-3">
+              <div>
+                <p className="text-gray-400 text-sm">Subject</p>
+                <p className="text-white">{attendanceData.timetable?.subject?.name}</p>
+              </div>
+              
+              <div>
+                <p className="text-gray-400 text-sm">Date</p>
+                <p className="text-white">{new Date(attendanceData.date).toLocaleDateString()}</p>
+              </div>
+              
+              <div>
+                <p className="text-gray-400 text-sm">Time Slot</p>
+                <p className="text-white">{attendanceData.timeSlot}</p>
+              </div>
+              
+              <div>
+                <p className="text-gray-400 text-sm">Section</p>
+                <p className="text-white">{attendanceData.timetable?.section}</p>
+              </div>
+              
+              <div className="pt-3 border-t border-gray-700">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Total Students</span>
+                  <span className="text-white">{attendanceData.totalStudents}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-green-400">Present</span>
+                  <span className="text-green-400">{attendanceData.presentCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-red-400">Absent</span>
+                  <span className="text-red-400">{attendanceData.absentCount}</span>
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+
+          {/* Attendance Records */}
+          <GlassCard className="p-6 lg:col-span-2">
+            <h3 className="text-xl font-semibold text-white mb-4">Attendance Records</h3>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-700">
+                    <th className="text-left py-2 px-3 text-gray-300">Student</th>
+                    <th className="text-left py-2 px-3 text-gray-300">University ID</th>
+                    <th className="text-left py-2 px-3 text-gray-300">Status</th>
+                    <th className="text-left py-2 px-3 text-gray-300">Remarks</th>
+                    <th className="text-left py-2 px-3 text-gray-300">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendanceData.attendance.map((record, index) => (
+                    <tr 
+                      key={record.student._id} 
+                      className={`border-b border-gray-800 hover:bg-gray-800/50 ${
+                        selectedStudent?.student._id === record.student._id ? 'bg-blue-900/30' : ''
+                      }`}
+                    >
+                      <td className="py-2 px-3 text-white">{record.student.name}</td>
+                      <td className="py-2 px-3 text-gray-300">{record.student.universityId}</td>
+                      <td className="py-2 px-3">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          record.attendance.status === 'present' 
+                            ? 'bg-green-900/50 text-green-400' 
+                            : 'bg-red-900/50 text-red-400'
+                        }`}>
+                          {record.attendance.status}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-gray-300">{record.attendance.remarks || '-'}</td>
+                      <td className="py-2 px-3">
+                        <button
+                          onClick={() => setSelectedStudent(record)}
+                          className="text-blue-400 hover:text-blue-300 text-sm"
+                        >
+                          Override
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </GlassCard>
+
+          {/* Override Form */}
+          {selectedStudent && (
+            <GlassCard className="p-6 lg:col-span-3">
+              <h3 className="text-xl font-semibold text-white mb-4">
+                Override Attendance for {selectedStudent.student.name}
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Current Status</label>
+                  <div className={`px-3 py-2 rounded-lg ${
+                    selectedStudent.attendance.status === 'present' 
+                      ? 'bg-green-900/30 text-green-400' 
+                      : 'bg-red-900/30 text-red-400'
+                  }`}>
+                    {selectedStudent.attendance.status}
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">New Status *</label>
+                  <select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value)}
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="present">Present</option>
+                    <option value="absent">Absent</option>
+                  </select>
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Remarks (Optional)</label>
+                  <input
+                    type="text"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    placeholder="Add any remarks for this override"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Override Reason *</label>
+                  <textarea
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    placeholder="Mandatory reason for this override"
+                    rows="3"
+                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div className="flex gap-3">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleOverride}
+                  disabled={overriding || !overrideReason}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {overriding ? 'Overriding...' : 'Confirm Override'}
+                </motion.button>
+                
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setSelectedStudent(null);
+                    setNewStatus('present');
+                    setRemarks('');
+                    setOverrideReason('');
+                  }}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Cancel
+                </motion.button>
+              </div>
+            </GlassCard>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SuperAdminOverride;

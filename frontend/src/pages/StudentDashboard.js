@@ -6,6 +6,8 @@ import WebcamCapture from '../components/WebcamCapture';
 import GlassCard from '../components/GlassCard';
 import AttendanceCharts from '../components/AttendanceCharts';
 import HeatmapCalendar from '../components/HeatmapCalendar';
+import StudentAttendanceView from '../components/StudentAttendanceView';
+import SectionTimetableView from '../components/SectionTimetableView';
 import '../styles/glassmorphism.css';
 
 const StudentDashboard = () => {
@@ -19,6 +21,7 @@ const StudentDashboard = () => {
   const [faceRegistered, setFaceRegistered] = useState(false);
   const [registrationStatus, setRegistrationStatus] = useState('not_registered');
   const [loading, setLoading] = useState(true);
+  const [studentInfo, setStudentInfo] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -31,7 +34,7 @@ const StudentDashboard = () => {
       const [subjectsRes, attendanceRes, timetableRes, analyticsRes] = await Promise.all([
         api.get('/api/subjects'),
         api.get('/api/attendance'),
-        api.get('/api/timetable'),
+        api.get('/api/timetables'),
         api.get('/api/analytics/overview')
       ]);
 
@@ -44,6 +47,35 @@ const StudentDashboard = () => {
       const userData = await api.get('/api/auth/me');
       const isFaceRegistered = userData.data.faceRegistered || false;
       let regStatus = userData.data.registrationStatus; // Can be null, 'pending', 'approved', or 'rejected'
+      
+      // Fetch active semester for student's department and semester number
+      const semestersRes = await api.get('/api/semesters', {
+        params: {
+          branch: userData.data.department,
+          isActive: true
+        }
+      });
+      
+      // Find semester matching student's semester number
+      const activeSemester = semestersRes.data.find(s => 
+        s.branch === userData.data.department && 
+        s.semesterNumber === parseInt(userData.data.semester)
+      );
+      
+      // Store student info for timetable
+      setStudentInfo({
+        branch: userData.data.department,
+        section: userData.data.section || '',
+        semester: activeSemester?._id || userData.data.semester
+      });
+      
+      console.log('Student Info for timetable:', {
+        branch: userData.data.department,
+        section: userData.data.section,
+        semesterId: activeSemester?._id,
+        semesterNumber: userData.data.semester,
+        activeSemester: activeSemester
+      });
       
       // Debug log (remove in production)
       console.log('Face registration status:', { 
@@ -70,6 +102,10 @@ const StudentDashboard = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAttendanceMarked = (newAttendanceRecord) => {
+    setAttendance(prev => [newAttendanceRecord, ...prev]);
   };
 
   const handleFaceRegistered = () => {
@@ -360,120 +396,17 @@ const StudentDashboard = () => {
         )}
 
         {/* Attendance Tab */}
-        {activeTab === 'attendance' && (
-          <GlassCard>
-            <h2 style={{ color: 'white', marginBottom: '1rem' }}>Attendance Records</h2>
-            <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-              {attendance.length === 0 ? (
-                <p style={{ color: 'rgba(255, 255, 255, 0.7)', textAlign: 'center', padding: '2rem' }}>
-                  No attendance records found
-                </p>
-              ) : (
-                attendance.map(record => (
-                  <motion.div
-                  key={record._id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    style={{
-                      padding: '1rem',
-                      marginBottom: '0.5rem',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      borderRadius: '10px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div>
-                      <p style={{ color: 'white', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                        {record.subjectId?.name || 'Unknown Subject'}
-                      </p>
-                      <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>
-                        {new Date(record.date).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </p>
-                      <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem' }}>
-                        Marked by: {record.markedBy || 'Unknown'}
-                      </p>
-                    </div>
-                    <span style={{
-                      padding: '0.5rem 1rem',
-                      borderRadius: '20px',
-                      background: record.status === 'present'
-                        ? 'rgba(74, 222, 128, 0.3)'
-                        : record.status === 'late'
-                        ? 'rgba(251, 191, 36, 0.3)'
-                        : 'rgba(248, 113, 113, 0.3)',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      textTransform: 'capitalize'
-                    }}>
-                      {record.status}
-                    </span>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          </GlassCard>
+        {activeTab === 'attendance' && user && (
+          <StudentAttendanceView studentId={user.id} />
         )}
 
         {/* Timetable Tab */}
-        {activeTab === 'timetable' && (
-          <GlassCard>
-            <h2 style={{ color: 'white', marginBottom: '1rem' }}>Weekly Timetable</h2>
-            <div style={{ display: 'grid', gap: '1rem' }}>
-              {Object.entries(timetable).map(([day, classes]) => (
-                <motion.div
-                  key={day}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  style={{
-                    padding: '1rem',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: '10px'
-                  }}
-                >
-                  <h3 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1.2rem' }}>
-                    {day}
-                  </h3>
-                  {classes.length === 0 ? (
-                    <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.9rem' }}>
-                      No classes scheduled
-                    </p>
-                  ) : (
-                    <div style={{ display: 'grid', gap: '0.5rem' }}>
-                      {classes.map((classItem, index) => (
-                        <div
-                          key={index}
-                          style={{
-                            padding: '0.75rem',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <div>
-                  <p style={{ color: 'white', fontWeight: 'bold' }}>
-                              {classItem.subject?.name || 'Unknown'}
-                  </p>
-                            <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.85rem' }}>
-                              {classItem.time} | {classItem.room || 'TBA'}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </GlassCard>
+        {activeTab === 'timetable' && studentInfo && (
+          <SectionTimetableView 
+            branch={studentInfo.branch}
+            section={studentInfo.section}
+            semester={studentInfo.semester}
+          />
         )}
 
         {/* Analytics Tab */}

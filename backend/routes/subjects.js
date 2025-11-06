@@ -1,6 +1,9 @@
 const express = require('express');
 const { auth, authorize } = require('../middleware/auth');
 const Subject = require('../models/Subject');
+const Student = require('../models/Student');
+const Branch = require('../models/Branch');
+const Batch = require('../models/Batch');
 const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
@@ -10,15 +13,19 @@ const router = express.Router();
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
-    const { department, semester } = req.query;
+    const { department, semester, includeDeleted } = req.query;
     const query = {};
+
+    // By default, exclude deactivated subjects
+    if (includeDeleted !== 'true') {
+      query.isActive = true;
+    }
 
     if (department) query.department = department;
     if (semester) query.semester = semester;
 
     // Students can only see their subjects
     if (req.user.role === 'student') {
-      const Student = require('../models/Student');
       const student = await Student.findOne({ userId: req.user._id });
       if (student) {
         if (student.subjects && student.subjects.length > 0) {
@@ -82,7 +89,25 @@ router.post('/', [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { code, name, department, semester, credits, students, timetable, faculty } = req.body;
+    const { code, name, department, semester, credits, students, timetable, faculty, section } = req.body;
+
+    // Check if subject code already exists
+    const existingSubject = await Subject.findOne({ code });
+    if (existingSubject) {
+      return res.status(400).json({ message: `Subject with code ${code} already exists` });
+    }
+
+    // Get branch information based on department
+    const branch = await Branch.findOne({ code: department });
+    if (!branch) {
+      return res.status(400).json({ message: `Branch with code ${department} not found` });
+    }
+
+    // Find batch for this branch
+    const batch = await Batch.findOne({ branch: branch._id });
+    if (!batch) {
+      return res.status(400).json({ message: 'No batch found for this branch' });
+    }
 
     // SuperAdmin can assign any faculty, Admin can only assign themselves
     const facultyId = req.user.role === 'superadmin' && faculty 
@@ -92,15 +117,14 @@ router.post('/', [
     // Auto-assign students based on department, semester, and section if not explicitly provided
     let assignedStudents = students || [];
     if (!students || students.length === 0) {
-      const Student = require('../models/Student');
       const matchQuery = {
         department: department,
         semester: semester
       };
       // If subject has a section, only match students with that section (or no section)
-      if (req.body.section) {
+      if (section) {
         matchQuery.$or = [
-          { section: req.body.section },
+          { section: section },
           { section: null },
           { section: { $exists: false } }
         ];
@@ -114,10 +138,20 @@ router.post('/', [
       name,
       department,
       semester,
+      section: section || null,
       credits: credits || 3,
-      faculty: facultyId,
+      campus: branch.campus,
+      program: branch.program,
+      branch: branch._id,
+      batch: batch._id,
+      faculty: [{
+        teacher: facultyId,
+        role: 'primary',
+        assignedSections: [section || 'A']
+      }],
       students: assignedStudents,
-      timetable: timetable || []
+      timetable: timetable || [],
+      createdBy: req.user._id
     });
 
     // Update students' subject list
@@ -135,7 +169,20 @@ router.post('/', [
     res.status(201).json(populatedSubject);
   } catch (error) {
     console.error('Create subject error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      const value = error.keyValue[field];
+      return res.status(400).json({ 
+        message: `Subject with ${field} "${value}" already exists` 
+      });
+    }
+    
+    res.status(500).json({ 
+      message: 'Failed to create subject', 
+      error: error.message 
+    });
   }
 });
 
@@ -178,21 +225,57 @@ router.put('/:id', auth, authorize('admin', 'superadmin'), async (req, res) => {
 });
 
 // @route   DELETE /api/subjects/:id
-// @desc    Delete subject
+// @desc    Delete subject (soft delete by default, permanent with ?permanent=true)
 // @access  Private (SuperAdmin only)
 router.delete('/:id', auth, authorize('superadmin'), async (req, res) => {
   try {
+    const { permanent } = req.query;
     const subject = await Subject.findById(req.params.id);
     
     if (!subject) {
       return res.status(404).json({ message: 'Subject not found' });
     }
 
-    await Subject.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Subject deleted successfully' });
+    console.log(`SuperAdmin ${req.user.email} deleting subject: ${subject.name} (${permanent === 'true' ? 'PERMANENT' : 'SOFT'})`);
+
+    // PERMANENT DELETION
+    if (permanent === 'true') {
+      // Delete related attendance records
+      const Attendance = require('../models/Attendance');
+      const attnResult = await Attendance.deleteMany({ subjectId: subject._id });
+      console.log(`Deleted ${attnResult.deletedCount} attendance records for subject`);
+
+      await Subject.findByIdAndDelete(req.params.id);
+      console.log(`Subject ${subject.name} permanently deleted`);
+
+      return res.json({ 
+        message: 'Subject and all related data permanently deleted',
+        deletedSubject: {
+          code: subject.code,
+          name: subject.name
+        },
+        attendanceRecordsDeleted: attnResult.deletedCount
+      });
+    }
+
+    // SOFT DELETE (default)
+    // Use findByIdAndUpdate to avoid validation issues with missing required fields
+    await Subject.findByIdAndUpdate(req.params.id, {
+      isActive: false,
+      updatedAt: new Date()
+    }, { runValidators: false });
+
+    console.log(`Subject ${subject.name} deactivated`);
+
+    const updatedSubject = await Subject.findById(req.params.id);
+    res.json({ 
+      message: 'Subject deactivated successfully',
+      subject: updatedSubject,
+      note: 'Use DELETE /api/subjects/:id?permanent=true to permanently remove'
+    });
   } catch (error) {
     console.error('Delete subject error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

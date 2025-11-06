@@ -23,12 +23,22 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/campus', require('./routes/campus'));
+app.use('/api/programs', require('./routes/programs'));
+app.use('/api/branches', require('./routes/branches'));
+app.use('/api/batches', require('./routes/batches'));
 app.use('/api/students', require('./routes/students'));
 app.use('/api/subjects', require('./routes/subjects'));
-app.use('/api/timetable', require('./routes/timetable'));
+app.use('/api/semesters', require('./routes/semester'));
+app.use('/api/timetables', require('./routes/timetable'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/face', require('./routes/face'));
+app.use('/api/universities', require('./routes/universities'));
+app.use('/api/schools', require('./routes/schools'));
+app.use('/api/courses', require('./routes/courses'));
+app.use('/api/examination', require('./routes/examination'));
+app.use('/api/superadmin', require('./routes/superadmin'));
 
 // Root route
 app.get('/', (req, res) => {
@@ -40,8 +50,14 @@ app.get('/', (req, res) => {
       health: '/api/health',
       auth: '/api/auth',
       users: '/api/users',
+      campus: '/api/campus',
+      programs: '/api/programs',
+      branches: '/api/branches',
+      batches: '/api/batches',
       students: '/api/students',
       subjects: '/api/subjects',
+      semesters: '/api/semesters',
+      timetables: '/api/timetables',
       attendance: '/api/attendance',
       analytics: '/api/analytics',
       face: '/api/face'
@@ -178,7 +194,7 @@ const connectDB = async () => {
 };
 
 // Server start
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API Endpoints available at: http://localhost:${PORT}/api`);

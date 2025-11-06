@@ -13,14 +13,24 @@ const router = express.Router();
 // @access  Private (Student)
 router.post('/register', auth, authorize('student'), async (req, res) => {
   try {
-    const { frames } = req.body;
-    if (!frames || !Array.isArray(frames) || frames.length < 3) {
-      return res.status(400).json({ message: 'Please provide at least 3 frames.' });
+    const { frames, imageData } = req.body;
+    
+    // Accept either frames array or imageData (for mobile compatibility)
+    let framesToProcess = [];
+    if (frames && Array.isArray(frames) && frames.length > 0) {
+      framesToProcess = frames;
+    } else if (imageData) {
+      // If only single imageData provided, use it multiple times
+      framesToProcess = [imageData];
+    }
+    
+    if (framesToProcess.length === 0) {
+      return res.status(400).json({ message: 'Please provide frames or imageData for face registration.' });
     }
 
-    const embedding = await faceService.generateEmbedding(null, frames);
+    const embedding = await faceService.generateEmbedding(framesToProcess[0], framesToProcess);
     if (!embedding) {
-      return res.status(500).json({ message: 'Failed to generate face embedding. Ensure image quality.' });
+      return res.status(500).json({ message: 'Failed to generate face embedding. Ensure image quality and face visibility.' });
     }
 
     // Persist to User and Student records
@@ -52,29 +62,42 @@ router.post('/recognize', auth, async (req, res) => {
       return res.status(400).json({ message: 'Image and subjectId required' });
     }
 
+    console.log(`Face recognition request for subject: ${subjectId}`);
     const subject = await Subject.findById(subjectId).populate('students');
-    if (!subject) return res.status(404).json({ message: 'Subject not found' });
+    if (!subject) {
+      console.log('Subject not found:', subjectId);
+      return res.status(404).json({ message: 'Subject not found' });
+    }
 
+    console.log(`Subject found: ${subject.name} (${subject.code})`);
+    
     // Prepare students eligible for recognition
     const candidates = await Student.find({
       _id: { $in: subject.students },
       faceRegistered: true,
       registrationStatus: 'approved',
-      faceEmbedding: { $exists: true, $ne: null, $not: { $size: 0 } }
+      faceEmbedding: { $exists: true, $ne: null, $ne: [] }
     }).select('faceEmbedding userId universityId name');
 
+    console.log(`Found ${candidates.length} approved students with face embeddings`);
+    
     if (!candidates || candidates.length === 0) {
-      return res.status(404).json({ message: 'No approved students with embeddings in this subject' });
+      return res.status(404).json({ 
+        message: 'No approved students with face registration found in this subject. Please ensure students have registered and been approved.' 
+      });
     }
 
     // Use service to recognize
     const result = await faceService.recognizeFace(imageData, candidates);
     if (!result) {
-      return res.status(404).json({ message: 'Face not recognized' });
+      console.log('Face not recognized or confidence too low');
+      return res.status(404).json({ message: 'Face not recognized. Please try again or ensure you are registered and approved.' });
     }
 
     const matchedStudent = result.student;
     const confidence = result.confidence;
+
+    console.log(`Face recognized: ${matchedStudent.name} (${matchedStudent.universityId}) with confidence ${confidence.toFixed(3)}`);
 
     // Mark attendance (avoid duplicates)
     const today = new Date();
@@ -87,6 +110,7 @@ router.post('/recognize', auth, async (req, res) => {
     });
 
     if (existing) {
+      console.log('Attendance already marked for today');
       return res.json({ message: 'Attendance already marked for today', attendance: existing });
     }
 
@@ -109,6 +133,7 @@ router.post('/recognize', auth, async (req, res) => {
       io.to(`subject-${subjectId}`).emit('attendance-updated', { studentId: matchedStudent._id, attendance: populated });
     }
 
+    console.log('Attendance marked successfully');
     return res.json({
       message: 'Attendance marked successfully',
       recognized: { name: matchedStudent.name, universityId: matchedStudent.universityId },
@@ -117,7 +142,7 @@ router.post('/recognize', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('face recognize error', error);
-    return res.status(500).json({ message: 'Server error', error: error.message });
+    return res.status(500).json({ message: 'Server error during face recognition', error: error.message });
   }
 });
 

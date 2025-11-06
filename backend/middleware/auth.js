@@ -12,14 +12,35 @@ const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).select('-password');
     
-    if (!user || !user.isActive) {
-      return res.status(401).json({ message: 'User not found or inactive' });
+    // Block access if user doesn't exist, is inactive, or is deleted
+    if (!user) {
+      return res.status(401).json({ 
+        message: 'User account not found. Please contact administrator.' 
+      });
+    }
+    
+    if (user.isDeleted) {
+      return res.status(401).json({ 
+        message: 'Account has been deleted. Please contact administrator for re-registration.' 
+      });
+    }
+    
+    if (!user.isActive) {
+      return res.status(401).json({ 
+        message: 'Account is deactivated. Please contact administrator.' 
+      });
     }
 
     req.user = user;
     next();
   } catch (error) {
-    res.status(401).json({ message: 'Token is not valid' });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired. Please login again.' });
+    }
+    res.status(401).json({ message: 'Authentication failed' });
   }
 };
 

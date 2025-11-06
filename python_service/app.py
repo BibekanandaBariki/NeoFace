@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from deepface import DeepFace
+from deepface import DeepFace  # pyright: ignore[reportMissingImports]
 import numpy as np
 import os
 import logging
@@ -32,23 +32,34 @@ def embed():
         return jsonify({"error": "frames array required"}), 400
 
     embeddings = []
+    failed_frames = 0
     try:
         for idx, f in enumerate(frames):
-            # DeepFace can accept base64 via img_path
-            resp = DeepFace.represent(img_path=f, model_name=MODEL_NAME, detector_backend=BACKEND, enforce_detection=True)
-            # DeepFace.represent returns a list of dicts
-            if isinstance(resp, list) and len(resp) > 0:
-                item = resp[0]
-                if isinstance(item, dict) and "embedding" in item:
-                    emb = np.array(item["embedding"], dtype=float)
+            try:
+                # DeepFace can accept base64 via img_path
+                resp = DeepFace.represent(img_path=f, model_name=MODEL_NAME, detector_backend=BACKEND, enforce_detection=True)
+                # DeepFace.represent returns a list of dicts
+                if isinstance(resp, list) and len(resp) > 0:
+                    item = resp[0]
+                    if isinstance(item, dict) and "embedding" in item:
+                        emb = np.array(item["embedding"], dtype=float)
+                    else:
+                        emb = np.array(item, dtype=float)
                 else:
-                    emb = np.array(item, dtype=float)
-            else:
-                emb = np.array(resp, dtype=float)
-            embeddings.append(emb)
+                    emb = np.array(resp, dtype=float)
+                embeddings.append(emb)
+            except Exception as frame_error:
+                app.logger.warning(f"Failed to process frame {idx}: {str(frame_error)}")
+                failed_frames += 1
+                # Continue processing other frames
+                continue
     except Exception as e:
         app.logger.exception("DeepFace error")
         return jsonify({"error": "failed to generate embeddings", "detail": str(e)}), 500
+
+    # Check if we have enough successful embeddings
+    if len(embeddings) == 0:
+        return jsonify({"error": "No face detected in any frame. Please ensure face is clearly visible."}), 400
 
     # Average and L2-normalize
     try:
@@ -58,7 +69,12 @@ def embed():
         if norm > 0:
             avg = avg / norm
         embedding_list = avg.astype(float).tolist()
-        return jsonify({"embedding": embedding_list, "dim": len(embedding_list)}), 200
+        return jsonify({
+            "embedding": embedding_list, 
+            "dim": len(embedding_list),
+            "processed_frames": len(embeddings),
+            "failed_frames": failed_frames
+        }), 200
     except Exception as e:
         app.logger.exception("Embedding aggregation error")
         return jsonify({"error": "failed to aggregate embeddings", "detail": str(e)}), 500
