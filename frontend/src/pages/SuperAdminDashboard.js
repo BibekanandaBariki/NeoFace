@@ -8,6 +8,19 @@ import AttendanceCharts from '../components/AttendanceCharts';
 import HeatmapCalendar from '../components/HeatmapCalendar';
 import FaceRecognitionCapture from '../components/FaceRecognitionCapture';
 import WebcamCapture from '../components/WebcamCapture';
+import SemesterManagement from '../components/SemesterManagement';
+import TimetableManagement from '../components/TimetableManagement';
+import AdminAttendanceMarking from '../components/AdminAttendanceMarking';
+import CampusManagement from '../components/CampusManagement';
+import ProgramManagement from '../components/ProgramManagement';
+import BranchManagement from '../components/BranchManagement';
+import BatchManagement from '../components/BatchManagement';
+import UniversityManagement from '../components/UniversityManagement';
+import SchoolManagement from '../components/SchoolManagement';
+import CourseManagement from '../components/CourseManagement';
+import AdmitCardGeneration from '../components/AdmitCardGeneration';
+import SuperAdminOverride from '../components/SuperAdminOverride';
+import SubjectManagement from '../components/SubjectManagement';
 import '../styles/glassmorphism.css';
 
 const SuperAdminDashboard = () => {
@@ -23,26 +36,19 @@ const SuperAdminDashboard = () => {
   const [students, setStudents] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [subjects, setSubjects] = useState([]);
-  const [attendance, setAttendance] = useState([]);
   const [timetable, setTimetable] = useState({});
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Form states
-  const [showAddAdmin, setShowAddAdmin] = useState(false);
-  const [showAddStudent, setShowAddStudent] = useState(false);
-  const [showAddSubject, setShowAddSubject] = useState(false);
-  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState(null);
-  const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [selectedStudentForFace, setSelectedStudentForFace] = useState(null);
-
   const [newAdmin, setNewAdmin] = useState({
     name: '',
     email: '',
     password: '',
-    department: ''
+    department: '',
+    role: 'admin',
+    universityId: '',
+    campusId: ''
   });
   const [newStudent, setNewStudent] = useState({
     name: '',
@@ -53,6 +59,7 @@ const SuperAdminDashboard = () => {
     semester: '',
     year: new Date().getFullYear()
   });
+  // Add back the used state variables
   const [newSubject, setNewSubject] = useState({
     code: '',
     name: '',
@@ -63,6 +70,12 @@ const SuperAdminDashboard = () => {
     faculty: '',
     timetable: []
   });
+  const [timetableSlot, setTimetableSlot] = useState({
+    day: 'Monday',
+    startTime: '09:00',
+    endTime: '10:00',
+    room: ''
+  });
   const [editingUser, setEditingUser] = useState(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
@@ -71,33 +84,127 @@ const SuperAdminDashboard = () => {
   const [showEditStudentModal, setShowEditStudentModal] = useState(false);
   const [editUserData, setEditUserData] = useState({});
   const [editStudentData, setEditStudentData] = useState({});
-  const [timetableSlot, setTimetableSlot] = useState({
-    day: 'Monday',
-    startTime: '09:00',
-    endTime: '10:00',
-    room: ''
-  });
+  const [newPassword, setNewPassword] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [showAddSubject, setShowAddSubject] = useState(false);
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [showAddStudent, setShowAddStudent] = useState(false);
+
+  // Add universities and campuses to state
+  const [universities, setUniversities] = useState([]);
+  const [campuses, setCampuses] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [schools, setSchools] = useState([]);
+  const [programs, setPrograms] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [batches, setBatches] = useState([]);
+
+  // Fetch universities and campuses
+  const fetchUniversities = async () => {
+    try {
+      const response = await api.get('/api/universities?isActive=true');
+      setUniversities(response.data);
+    } catch (error) {
+      console.error('Error fetching universities:', error);
+    }
+  };
+
+  const fetchCampuses = async () => {
+    try {
+      const response = await api.get('/api/campus?isActive=true');
+      setCampuses(response.data);
+    } catch (error) {
+      console.error('Error fetching campuses:', error);
+    }
+  };
+
+  const fetchBranches = async () => {
+    try {
+      const response = await api.get('/api/branches');
+      console.log('Branches fetched:', response.data);
+      setBranches(response.data);
+    } catch (error) {
+      console.error('Error fetching branches:', error);
+    }
+  };
+
+  const fetchSchools = async () => {
+    try {
+      const response = await api.get('/api/schools');
+      setSchools(response.data);
+    } catch (error) {
+      console.error('Error fetching schools:', error);
+    }
+  };
+
+  const fetchPrograms = async () => {
+    try {
+      const response = await api.get('/api/programs');
+      setPrograms(response.data);
+    } catch (error) {
+      console.error('Error fetching programs:', error);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const response = await api.get('/api/courses');
+      setCourses(response.data);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
+
+  const fetchBatches = async () => {
+    try {
+      const response = await api.get('/api/batches');
+      setBatches(response.data);
+    } catch (error) {
+      console.error('Error fetching batches:', error);
+    }
+  };
 
   useEffect(() => {
     fetchDashboardData();
+    fetchUniversities();
+    fetchCampuses();
+    fetchBranches();
+    fetchSchools();
+    fetchPrograms();
+    fetchCourses();
+    fetchBatches();
+    
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardData = async () => {
     try {
-      const [studentsRes, usersRes, subjectsRes, analyticsRes, attendanceRes, timetableRes] = await Promise.all([
+      setLoading(true);
+      
+      // Fetch all data in parallel
+      const [
+        studentsRes, 
+        adminsRes, 
+        subjectsRes, 
+        timetableRes, 
+        analyticsRes,
+        universitiesRes,
+        campusesRes,
+        branchesRes
+      ] = await Promise.all([
         api.get('/api/students'),
-        api.get('/api/users'),
+        api.get('/api/users?role=admin,campusadmin,hod'),
         api.get('/api/subjects'),
+        api.get('/api/timetables'),
         api.get('/api/analytics/overview'),
-        api.get('/api/attendance'),
-        api.get('/api/timetable')
+        api.get('/api/universities?isActive=true'),
+        api.get('/api/campus?isActive=true'),
+        api.get('/api/branches')
       ]);
 
       const studentsData = studentsRes.data;
-      const usersData = usersRes.data;
-      const adminsData = usersData.filter(u => u.role === 'admin');
+      const adminsData = adminsRes.data;
 
       setStats({
         totalStudents: studentsData.length,
@@ -110,9 +217,11 @@ const SuperAdminDashboard = () => {
       setStudents(studentsData);
       setAdmins(adminsData);
       setSubjects(subjectsRes.data);
-      setAttendance(attendanceRes.data);
-      setTimetable(timetableRes.data);
       setAnalytics(analyticsRes.data);
+      setUniversities(universitiesRes.data);
+      setCampuses(campusesRes.data);
+      setBranches(branchesRes.data);
+
     } catch (error) {
       console.error('Fetch error:', error);
     } finally {
@@ -123,12 +232,29 @@ const SuperAdminDashboard = () => {
   const handleCreateAdmin = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/users', {
-        ...newAdmin,
-        role: 'admin'
-      });
+      const adminData = {
+        name: newAdmin.name,
+        email: newAdmin.email,
+        password: newAdmin.password,
+        role: newAdmin.role || 'admin',
+        department: newAdmin.department
+      };
+      
+      // Only include universityId and campusId if they are selected
+      if (newAdmin.universityId) adminData.universityId = newAdmin.universityId;
+      if (newAdmin.campusId) adminData.assignedCampus = newAdmin.campusId;
+      
+      await api.post('/api/users', adminData);
       setShowAddAdmin(false);
-      setNewAdmin({ name: '', email: '', password: '', department: '' });
+      setNewAdmin({ 
+        name: '', 
+        email: '', 
+        password: '', 
+        department: '',
+        role: 'admin',
+        universityId: '',
+        campusId: ''
+      });
       fetchDashboardData();
       alert('Admin created successfully!');
     } catch (error) {
@@ -171,7 +297,13 @@ const SuperAdminDashboard = () => {
       
       console.log('Student created successfully:', response.data);
       
-      const loginInfo = `Student created successfully!\n\nLogin Credentials:\nEmail: ${studentData.email}\nPassword: ${studentData.universityId}\n\n(Student should use University ID as password)`;
+      const loginInfo = `Student created successfully!
+
+Login Credentials:
+Email: ${studentData.email}
+Password: ${studentData.universityId}
+
+(Student should use University ID as password)`;
       alert(loginInfo);
       setShowAddStudent(false);
       setNewStudent({
@@ -221,7 +353,7 @@ const SuperAdminDashboard = () => {
       
       // If timetable slots exist, update timetable
       if (newSubject.timetable.length > 0) {
-        await api.put(`/api/timetable/${subjectRes.data._id}`, {
+        await api.put(`/api/timetables/${subjectRes.data._id}`, {
           timetable: newSubject.timetable
         });
       }
@@ -297,10 +429,17 @@ const SuperAdminDashboard = () => {
     if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
     
     try {
-      await api.delete(`/api/${type}/${id}`);
+      // Map frontend type to backend endpoint
+      const endpoint = type === 'students' ? '/api/students' : 
+                      type === 'subjects' ? '/api/subjects' : 
+                      type === 'users' ? '/api/users' : 
+                      `/api/${type}`;
+      
+      await api.delete(`${endpoint}/${id}`);
       fetchDashboardData();
     } catch (error) {
-      alert(`Failed to delete ${type}`);
+      console.error(`Failed to delete ${type}:`, error);
+      alert(`Failed to delete ${type}: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -370,7 +509,20 @@ const SuperAdminDashboard = () => {
     if (!editingUser) return;
 
     try {
-      await api.put(`/api/users/${editingUser._id}`, editUserData);
+      const userData = {
+        name: editUserData.name,
+        email: editUserData.email,
+        department: editUserData.department,
+        role: editUserData.role,
+        isActive: editUserData.isActive,
+        isVerified: editUserData.isVerified
+      };
+      
+      // Only include universityId and campusId if they are selected
+      if (editUserData.universityId) userData.universityId = editUserData.universityId;
+      if (editUserData.campusId) userData.assignedCampus = editUserData.campusId;
+      
+      await api.put(`/api/users/${editingUser._id}`, userData);
       alert('User updated successfully!');
       setShowEditUserModal(false);
       setEditingUser(null);
@@ -416,7 +568,7 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  const tabs = ['overview', 'admins', 'students', 'subjects', 'timetable', 'attendance', 'analytics'];
+  const tabs = ['overview', 'universities', 'campus', 'schools', 'programs', 'courses', 'branches', 'batches', 'admins', 'students', 'subjects', 'semesters', 'timetables', 'mark-attendance', 'analytics', 'admit-cards', 'override'];
 
   return (
     <div style={{
@@ -449,27 +601,16 @@ const SuperAdminDashboard = () => {
         </motion.div>
 
         {/* Tabs */}
-        <div style={{
-          display: 'flex',
-          gap: '1rem',
-          marginBottom: '2rem',
-          flexWrap: 'wrap'
-        }}>
+        <div className="tab-navigation">
           {tabs.map(tab => (
             <motion.button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className="glass-button"
-              style={{
-                background: activeTab === tab
-                  ? 'rgba(255, 255, 255, 0.2)'
-                  : 'rgba(255, 255, 255, 0.1)',
-                textTransform: 'capitalize'
-              }}
+              className={`tab-button ${activeTab === tab ? 'active' : ''}`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              {tab}
+              {tab.replace('-', ' ')}
             </motion.button>
           ))}
         </div>
@@ -534,6 +675,41 @@ const SuperAdminDashboard = () => {
           </>
         )}
 
+        {/* Universities Tab */}
+        {activeTab === 'universities' && (
+          <UniversityManagement />
+        )}
+
+        {/* Schools Tab */}
+        {activeTab === 'schools' && (
+          <SchoolManagement />
+        )}
+
+        {/* Courses Tab */}
+        {activeTab === 'courses' && (
+          <CourseManagement />
+        )}
+
+        {/* Campus Tab */}
+        {activeTab === 'campus' && (
+          <CampusManagement />
+        )}
+
+        {/* Programs Tab */}
+        {activeTab === 'programs' && (
+          <ProgramManagement />
+        )}
+
+        {/* Branches Tab */}
+        {activeTab === 'branches' && (
+          <BranchManagement />
+        )}
+
+        {/* Batches Tab */}
+        {activeTab === 'batches' && (
+          <BatchManagement />
+        )}
+
         {/* Admins Tab */}
         {activeTab === 'admins' && (
           <>
@@ -586,6 +762,16 @@ const SuperAdminDashboard = () => {
                         required
                         minLength={6}
                       />
+                      <select
+                        className="glass-input"
+                        value={newAdmin.role || 'admin'}
+                        onChange={(e) => setNewAdmin({ ...newAdmin, role: e.target.value })}
+                        required
+                      >
+                        <option value="admin">Admin</option>
+                        <option value="campusadmin">Campus Admin</option>
+                        <option value="hod">Head of Department</option>
+                      </select>
                       <input
                         className="glass-input"
                         placeholder="Department"
@@ -593,6 +779,30 @@ const SuperAdminDashboard = () => {
                         onChange={(e) => setNewAdmin({ ...newAdmin, department: e.target.value })}
                         required
                       />
+                      <select
+                        className="glass-input"
+                        value={newAdmin.universityId || ''}
+                        onChange={(e) => setNewAdmin({ ...newAdmin, universityId: e.target.value })}
+                      >
+                        <option value="">Select University (Optional)</option>
+                        {universities.map(university => (
+                          <option key={university._id} value={university._id}>
+                            {university.name}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        className="glass-input"
+                        value={newAdmin.campusId || ''}
+                        onChange={(e) => setNewAdmin({ ...newAdmin, campusId: e.target.value })}
+                      >
+                        <option value="">Select Campus (Optional)</option>
+                        {campuses.map(campus => (
+                          <option key={campus._id} value={campus._id}>
+                            {campus.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div style={{ display: 'flex', gap: '1rem' }}>
                       <button type="submit" className="glass-button">
@@ -607,7 +817,8 @@ const SuperAdminDashboard = () => {
                       </button>
                     </div>
                   </form>
-                </motion.div>
+
+              </motion.div>
               )}
 
               <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
@@ -749,13 +960,31 @@ const SuperAdminDashboard = () => {
                         onChange={(e) => setNewStudent({ ...newStudent, universityId: e.target.value })}
                         required
                       />
-                      <input
+                      <select
                         className="glass-input"
-                        placeholder="Department"
                         value={newStudent.department}
                         onChange={(e) => setNewStudent({ ...newStudent, department: e.target.value })}
                         required
-                      />
+                      >
+                        <option value="">Select Department</option>
+                        {branches.map(branch => {
+                          // Find related entities for display
+                          const campus = campuses.find(c => c._id === branch.campus);
+                          const program = programs.find(p => p._id === branch.program);
+                          const school = schools.find(s => s._id === branch.school);
+                          const university = universities.find(u => u._id === branch.university);
+                          
+                          return (
+                            <option key={branch._id} value={branch.code}>
+                              {branch.name} ({branch.code}) - 
+                              {university ? ` ${university.name}` : ''} - 
+                              {campus ? ` ${campus.name}` : ''} - 
+                              {school ? ` ${school.name}` : ''} - 
+                              {program ? ` ${program.name}` : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
                       <input
                         className="glass-input"
                         placeholder="Section (optional, e.g., A, B, CSE-A)"
@@ -781,6 +1010,7 @@ const SuperAdminDashboard = () => {
                         required
                       />
                     </div>
+
                     <div style={{ display: 'flex', gap: '1rem' }}>
                       <button type="submit" className="glass-button">
                         Create Student
@@ -794,7 +1024,8 @@ const SuperAdminDashboard = () => {
                       </button>
                     </div>
                   </form>
-                </motion.div>
+
+              </motion.div>
               )}
 
               <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
@@ -813,19 +1044,18 @@ const SuperAdminDashboard = () => {
                       alignItems: 'center'
                     }}
                   >
-                    <div style={{ flex: 1 }}>
+                    <div>
                       <p style={{ color: 'white', fontWeight: 'bold', fontSize: '1.1rem' }}>
                         {student.name}
                       </p>
                       <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>
-                        {student.email} | {student.universityId} | {student.department}
+                        {student.email} | {student.department || 'N/A'}
                       </p>
                       <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem' }}>
-                        Status: {student.registrationStatus || 'not registered'} | Semester {student.semester}
-                        {student.section && ` | Section: ${student.section}`}
+                        Status: {student.isActive ? 'Active' : 'Inactive'}
                       </p>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button
                         onClick={() => handleEditStudent(student)}
                         className="glass-button"
@@ -837,40 +1067,20 @@ const SuperAdminDashboard = () => {
                       >
                         Edit
                       </button>
-                      {student.registrationStatus === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleApproveRegistration(student._id)}
-                            className="glass-button"
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => handleRejectRegistration(student._id)}
-                            className="glass-button glass-button-secondary"
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
-                          >
-                            Reject
-                          </button>
-                        </>
-                      )}
-                      {(student.faceRegistered || student.registrationStatus === 'approved') && (
-                        <button
-                          onClick={() => {
-                            setEditingStudent(student);
-                            setShowFaceUpdateModal(true);
-                          }}
-                          className="glass-button"
-                          style={{ 
-                            padding: '0.5rem 1rem', 
-                            fontSize: '0.85rem',
-                            background: 'rgba(34, 197, 94, 0.3)'
-                          }}
-                        >
-                          Update Face
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          setEditingStudent(student);
+                          setShowFaceUpdateModal(true);
+                        }}
+                        className="glass-button"
+                        style={{ 
+                          padding: '0.5rem 1rem', 
+                          fontSize: '0.85rem',
+                          background: 'rgba(251, 191, 36, 0.3)'
+                        }}
+                      >
+                        Update Face
+                      </button>
                       <button
                         onClick={() => handleDelete('students', student._id)}
                         className="glass-button"
@@ -892,234 +1102,25 @@ const SuperAdminDashboard = () => {
 
         {/* Subjects Tab */}
         {activeTab === 'subjects' && (
-          <>
-            <GlassCard style={{ marginBottom: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 style={{ color: 'white' }}>All Subjects</h2>
-                <button
-                  onClick={() => setShowAddSubject(true)}
-                  className="glass-button"
-                >
-                  Create Subject
-                </button>
-              </div>
-
-              {showAddSubject && (
-                <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  style={{
-                    padding: '1.5rem',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    borderRadius: '10px',
-                    marginBottom: '1rem'
-                  }}
-                >
-                  <h3 style={{ color: 'white', marginBottom: '1rem' }}>Create New Subject</h3>
-                  <form onSubmit={handleCreateSubject}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
-                      <input
-                        className="glass-input"
-                        placeholder="Subject Code (e.g., CS101)"
-                        value={newSubject.code}
-                        onChange={(e) => setNewSubject({ ...newSubject, code: e.target.value })}
-                        required
-                      />
-                      <input
-                        className="glass-input"
-                        placeholder="Subject Name"
-                        value={newSubject.name}
-                        onChange={(e) => setNewSubject({ ...newSubject, name: e.target.value })}
-                        required
-                      />
-                      <input
-                        className="glass-input"
-                        placeholder="Department"
-                        value={newSubject.department}
-                        onChange={(e) => setNewSubject({ ...newSubject, department: e.target.value })}
-                        required
-                      />
-                      <input
-                        className="glass-input"
-                        placeholder="Section (optional, e.g., A, B, CSE-A)"
-                        value={newSubject.section}
-                        onChange={(e) => setNewSubject({ ...newSubject, section: e.target.value })}
-                      />
-                      <input
-                        className="glass-input"
-                        type="number"
-                        placeholder="Semester"
-                        min="1"
-                        max="8"
-                        value={newSubject.semester}
-                        onChange={(e) => setNewSubject({ ...newSubject, semester: e.target.value })}
-                        required
-                      />
-                      <input
-                        className="glass-input"
-                        type="number"
-                        placeholder="Credits"
-                        value={newSubject.credits}
-                        onChange={(e) => setNewSubject({ ...newSubject, credits: e.target.value })}
-                      />
-                      <select
-                        className="glass-input"
-                        value={newSubject.faculty}
-                        onChange={(e) => setNewSubject({ ...newSubject, faculty: e.target.value })}
-                        required
-                      >
-                        <option value="">-- Select Faculty/Admin --</option>
-                        {admins.map(admin => (
-                          <option key={admin._id} value={admin._id}>
-                            {admin.name} ({admin.email})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div style={{ marginBottom: '1rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px' }}>
-                      <h4 style={{ color: 'white', marginBottom: '0.5rem' }}>Timetable Slots</h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <select
-                          className="glass-input"
-                          value={timetableSlot.day}
-                          onChange={(e) => setTimetableSlot({ ...timetableSlot, day: e.target.value })}
-                        >
-                          {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => (
-                            <option key={day} value={day}>{day}</option>
-                          ))}
-                        </select>
-                        <input
-                          className="glass-input"
-                          type="time"
-                          value={timetableSlot.startTime}
-                          onChange={(e) => setTimetableSlot({ ...timetableSlot, startTime: e.target.value })}
-                        />
-                        <input
-                          className="glass-input"
-                          type="time"
-                          value={timetableSlot.endTime}
-                          onChange={(e) => setTimetableSlot({ ...timetableSlot, endTime: e.target.value })}
-                        />
-                        <input
-                          className="glass-input"
-                          placeholder="Room"
-                          value={timetableSlot.room}
-                          onChange={(e) => setTimetableSlot({ ...timetableSlot, room: e.target.value })}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleAddTimetableSlot}
-                        className="glass-button glass-button-secondary"
-                        style={{ marginRight: '0.5rem' }}
-                      >
-                        Add Slot
-                      </button>
-
-                      {newSubject.timetable.length > 0 && (
-                        <div style={{ marginTop: '1rem' }}>
-                          <p style={{ color: 'white', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Added Slots:</p>
-                          {newSubject.timetable.map((slot, index) => (
-                            <div
-                              key={index}
-                              style={{
-                                padding: '0.5rem',
-                                marginBottom: '0.25rem',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                borderRadius: '5px',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                              }}
-                            >
-                              <span style={{ color: 'white', fontSize: '0.85rem' }}>
-                                {slot.day} {slot.startTime}-{slot.endTime} {slot.room}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveTimetableSlot(index)}
-                                className="glass-button"
-                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'rgba(248, 113, 113, 0.8)' }}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <button type="submit" className="glass-button">
-                        Create Subject
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowAddSubject(false);
-                          setNewSubject({ code: '', name: '', department: '', semester: '', credits: 3, faculty: '', timetable: [] });
-                        }}
-                        className="glass-button glass-button-secondary"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                </motion.div>
-              )}
-
-              <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                {subjects.map(subject => (
-                  <motion.div
-                    key={subject._id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    style={{
-                      padding: '1rem',
-                      marginBottom: '0.5rem',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      borderRadius: '10px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <p style={{ color: 'white', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                        {subject.name} ({subject.code})
-                      </p>
-                      <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem' }}>
-                        {subject.department} | Semester {subject.semester} | {subject.students?.length || 0} students
-                      </p>
-                      <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem' }}>
-                        Faculty: {subject.faculty?.name || 'N/A'}
-                      </p>
-                      {subject.timetable && subject.timetable.length > 0 && (
-                        <p style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '0.8rem', marginTop: '0.25rem' }}>
-                          Classes: {subject.timetable.map(s => `${s.day} ${s.startTime}-${s.endTime}`).join(', ')}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleDelete('subjects', subject._id)}
-                      className="glass-button"
-                      style={{
-                        padding: '0.5rem 1rem',
-                        fontSize: '0.85rem',
-                        background: 'rgba(248, 113, 113, 0.8)'
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </motion.div>
-                ))}
-              </div>
-            </GlassCard>
-          </>
+          <SubjectManagement />
         )}
 
-        {/* Timetable Tab */}
+        {/* Semesters Tab */}
+        {activeTab === 'semesters' && (
+          <SemesterManagement />
+        )}
+
+        {/* Timetables Tab */}
+        {activeTab === 'timetables' && (
+          <TimetableManagement />
+        )}
+
+        {/* Mark Attendance Tab */}
+        {activeTab === 'mark-attendance' && (
+          <AdminAttendanceMarking />
+        )}
+
+        {/* Timetable Tab (old) */}
         {activeTab === 'timetable' && (
         <GlassCard>
             <h2 style={{ color: 'white', marginBottom: '1rem' }}>Weekly Timetable</h2>
@@ -1174,189 +1175,6 @@ const SuperAdminDashboard = () => {
         </GlassCard>
         )}
 
-        {/* Attendance Tab */}
-        {activeTab === 'attendance' && (
-          <>
-            <GlassCard style={{ marginBottom: '2rem' }}>
-              <h2 style={{ color: 'white', marginBottom: '1rem' }}>Face Recognition Attendance</h2>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>
-                  Select Subject & Time Slot
-                </label>
-                <select
-                  className="glass-input"
-                  value={selectedSubject || ''}
-                  onChange={(e) => setSelectedSubject(e.target.value)}
-                  style={{ width: '100%', marginBottom: '1rem' }}
-                >
-                  <option value="">-- Select Subject --</option>
-                  {subjects.map(subject => (
-                    <option key={subject._id} value={subject._id}>
-                      {subject.name} ({subject.code})
-                    </option>
-                  ))}
-                </select>
-      </div>
-
-              {selectedSubject && (
-                <div>
-                  {(() => {
-                    const subject = subjects.find(s => s._id === selectedSubject);
-                    return (
-                      <>
-                        <p style={{ color: 'rgba(255, 255, 255, 0.8)', marginBottom: '1rem' }}>
-                          {subject?.timetable && subject.timetable.length > 0 ? (
-                            <>Available Slots: {subject.timetable.map(s => `${s.day} ${s.startTime}-${s.endTime}`).join(', ')}</>
-                          ) : (
-                            'No timetable slots configured. Please add timetable slots in the Subjects tab.'
-                          )}
-                        </p>
-                        <FaceRecognitionCapture
-                          subjectId={selectedSubject}
-                          onAttendanceMarked={() => {
-                            fetchDashboardData();
-                            alert('Attendance marked successfully!');
-                          }}
-                        />
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-            </GlassCard>
-
-            <GlassCard>
-              <h2 style={{ color: 'white', marginBottom: '1rem' }}>Manual Attendance Marking by Subject</h2>
-              <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
-                {subjects.map(subject => {
-                  const subjectStudents = students.filter(s => 
-                    subject.students?.includes(s._id) || 
-                    (s.department === subject.department && parseInt(s.semester) === parseInt(subject.semester))
-                  );
-                  
-                  if (subjectStudents.length === 0) return null;
-                  
-                  return (
-                    <div key={subject._id} style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '10px' }}>
-                      <div style={{ marginBottom: '0.5rem' }}>
-                        <h3 style={{ color: 'white', marginBottom: '0.25rem', fontSize: '1.1rem' }}>
-                          {subject.name} ({subject.code})
-                        </h3>
-                        {subject.timetable && subject.timetable.length > 0 && (
-                          <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
-                            Time Slots: {subject.timetable.map(s => `${s.day} ${s.startTime}-${s.endTime} ${s.room ? `(${s.room})` : ''}`).join(', ')}
-                          </p>
-                        )}
-                      </div>
-                      {subject.timetable.map((slot, slotIndex) => (
-                        <div key={slotIndex} style={{ marginBottom: '1rem', padding: '0.75rem', background: 'rgba(255, 255, 255, 0.05)', borderRadius: '8px' }}>
-                          <p style={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 'bold', marginBottom: '0.5rem' }}>
-                            {slot.day} - {slot.startTime} to {slot.endTime} {slot.room && `(${slot.room})`}
-                          </p>
-                          <div style={{ display: 'grid', gap: '0.5rem' }}>
-                            {subjectStudents.map(student => (
-                              <motion.div
-                                key={student._id}
-                                style={{
-                                  padding: '0.75rem',
-                                  background: 'rgba(255, 255, 255, 0.03)',
-                                  borderRadius: '8px',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center'
-                                }}
-                              >
-                                <span style={{ color: 'white', fontSize: '0.9rem' }}>
-                                  {student.name} ({student.universityId})
-                                </span>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                  <button
-                                    onClick={() => handleMarkAttendance(student._id, subject._id, new Date().toISOString().split('T')[0], 'present')}
-                                    className="glass-button"
-                                    style={{ 
-                                      padding: '0.5rem 1rem', 
-                                      fontSize: '0.85rem', 
-                                      background: 'rgba(74, 222, 128, 0.3)' 
-                                    }}
-                                  >
-                                    Present
-                                  </button>
-                                  <button
-                                    onClick={() => handleMarkAttendance(student._id, subject._id, new Date().toISOString().split('T')[0], 'absent')}
-                                    className="glass-button"
-                                    style={{ 
-                                      padding: '0.5rem 1rem', 
-                                      fontSize: '0.85rem', 
-                                      background: 'rgba(248, 113, 113, 0.3)' 
-                                    }}
-                                  >
-                                    Absent
-                                  </button>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                      {(!subject.timetable || subject.timetable.length === 0) && (
-                        <div style={{ padding: '0.75rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px' }}>
-                          <p style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                            All Students (No time slots configured)
-                          </p>
-                          <div style={{ display: 'grid', gap: '0.5rem' }}>
-                            {subjectStudents.map(student => (
-                              <motion.div
-                                key={student._id}
-                                style={{
-                                  padding: '0.75rem',
-                                  background: 'rgba(255, 255, 255, 0.03)',
-                                  borderRadius: '8px',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center'
-                                }}
-                              >
-                                <span style={{ color: 'white', fontSize: '0.9rem' }}>
-                                  {student.name} ({student.universityId})
-                                </span>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                  <button
-                                    onClick={() => handleMarkAttendance(student._id, subject._id, new Date().toISOString().split('T')[0], 'present')}
-                                    className="glass-button"
-                                    style={{ 
-                                      padding: '0.5rem 1rem', 
-                                      fontSize: '0.85rem', 
-                                      background: 'rgba(74, 222, 128, 0.3)' 
-                                    }}
-                                  >
-                                    Present
-                                  </button>
-                                  <button
-                                    onClick={() => handleMarkAttendance(student._id, subject._id, new Date().toISOString().split('T')[0], 'absent')}
-                                    className="glass-button"
-                                    style={{ 
-                                      padding: '0.5rem 1rem', 
-                                      fontSize: '0.85rem', 
-                                      background: 'rgba(248, 113, 113, 0.3)' 
-                                    }}
-                                  >
-                                    Absent
-                                  </button>
-                                </div>
-                              </motion.div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </GlassCard>
-          </>
-        )}
-
         {/* Analytics Tab */}
         {activeTab === 'analytics' && analytics && (
           <>
@@ -1408,6 +1226,16 @@ const SuperAdminDashboard = () => {
               <HeatmapCalendar dailyData={analytics.dailyHeatmap} />
             </div>
           </>
+        )}
+
+        {/* Admit Cards Tab */}
+        {activeTab === 'admit-cards' && (
+          <AdmitCardGeneration />
+        )}
+
+        {/* SuperAdmin Override Tab */}
+        {activeTab === 'override' && (
+          <SuperAdminOverride />
         )}
 
         {/* Password Change Modal */}
@@ -1579,20 +1407,40 @@ const SuperAdminDashboard = () => {
                     value={editUserData.department || ''}
                     onChange={(e) => setEditUserData({ ...editUserData, department: e.target.value })}
                   />
-                  <input
-                    className="glass-input"
-                    placeholder="University ID"
-                    value={editUserData.universityId || ''}
-                    onChange={(e) => setEditUserData({ ...editUserData, universityId: e.target.value })}
-                  />
                   <select
                     className="glass-input"
                     value={editUserData.role || 'admin'}
                     onChange={(e) => setEditUserData({ ...editUserData, role: e.target.value })}
                   >
                     <option value="admin">Admin</option>
+                    <option value="campusadmin">Campus Admin</option>
+                    <option value="hod">Head of Department</option>
                     <option value="student">Student</option>
                     <option value="superadmin">SuperAdmin</option>
+                  </select>
+                  <select
+                    className="glass-input"
+                    value={editUserData.universityId || ''}
+                    onChange={(e) => setEditUserData({ ...editUserData, universityId: e.target.value })}
+                  >
+                    <option value="">Select University (Optional)</option>
+                    {universities.map(university => (
+                      <option key={university._id} value={university._id}>
+                        {university.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="glass-input"
+                    value={editUserData.campusId || ''}
+                    onChange={(e) => setEditUserData({ ...editUserData, campusId: e.target.value })}
+                  >
+                    <option value="">Select Campus (Optional)</option>
+                    {campuses.map(campus => (
+                      <option key={campus._id} value={campus._id}>
+                        {campus.name}
+                      </option>
+                    ))}
                   </select>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                     <label style={{ color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1631,6 +1479,7 @@ const SuperAdminDashboard = () => {
                   </button>
                 </div>
               </form>
+
             </motion.div>
           </motion.div>
         )}

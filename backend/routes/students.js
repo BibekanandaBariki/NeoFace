@@ -2,20 +2,28 @@ const express = require('express');
 const { auth, authorize } = require('../middleware/auth');
 const Student = require('../models/Student');
 const User = require('../models/User');
+const Branch = require('../models/Branch');
+const Batch = require('../models/Batch');
 const { body, validationResult } = require('express-validator');
 
 const router = express.Router();
 
 // @route   GET /api/students
-// @desc    Get all students
+// @desc    Get all students (excluding deleted by default)
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
+    const { includeDeleted } = req.query;
     let query = {};
+    
+    // By default, exclude deleted students
+    if (includeDeleted !== 'true') {
+      query.isDeleted = false;
+    }
 
     // Students can only see themselves
     if (req.user.role === 'student') {
-      const student = await Student.findOne({ userId: req.user._id });
+      const student = await Student.findOne({ userId: req.user._id, ...query });
       if (!student) {
         return res.json([]);
       }
@@ -25,7 +33,7 @@ router.get('/', auth, async (req, res) => {
     // Admins see students in their subjects
     if (req.user.role === 'admin') {
       const Subject = require('../models/Subject');
-      const subjects = await Subject.find({ faculty: req.user._id });
+      const subjects = await Subject.find({ 'faculty.teacher': req.user._id });
       const studentIds = subjects.reduce((acc, subject) => {
         return acc.concat(subject.students.map(s => s.toString()));
       }, []);
@@ -37,8 +45,9 @@ router.get('/', auth, async (req, res) => {
     }
 
     const students = await Student.find(query)
-      .populate('userId', 'name email')
+      .populate('userId', 'name email isActive isDeleted')
       .populate('subjects', 'code name')
+      .populate('deletedBy', 'name email')
       .sort({ createdAt: -1 });
 
     res.json(students);
@@ -112,9 +121,10 @@ router.post('/', [
       });
     }
 
-    // Check if student exists
+    // Check if student exists (excluding deleted unless being restored)
     const existingStudent = await Student.findOne({ 
-      $or: [{ email: normalizedEmail }, { universityId: universityId.trim() }] 
+      $or: [{ email: normalizedEmail }, { universityId: universityId.trim() }],
+      isDeleted: false
     });
 
     if (existingStudent) {
@@ -122,8 +132,8 @@ router.post('/', [
       return res.status(400).json({ message: 'Student already exists with this email or university ID' });
     }
 
-    // Check if user with this email exists
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    // Check if user with this email exists (excluding deleted)
+    const existingUser = await User.findOne({ email: normalizedEmail, isDeleted: false });
     if (existingUser) {
       console.log('❌ User with this email already exists:', existingUser.email, 'Role:', existingUser.role);
       
@@ -201,18 +211,54 @@ router.post('/', [
       });
     }
 
+    // Get branch information based on department
+    const branch = await Branch.findOne({ code: department.trim() });
+    if (!branch) {
+      // Clean up user
+      await User.findByIdAndDelete(user._id).catch(cleanupErr => {
+        console.error('Failed to cleanup user:', cleanupErr);
+      });
+      return res.status(400).json({ message: `Branch with code ${department.trim()} not found` });
+    }
+
+    // Find batch for this branch
+    const batch = await Batch.findOne({ branch: branch._id });
+    if (!batch) {
+      // Clean up user
+      await User.findByIdAndDelete(user._id).catch(cleanupErr => {
+        console.error('Failed to cleanup user:', cleanupErr);
+      });
+      return res.status(400).json({ message: 'No batch found for this branch' });
+    }
+
+    // Generate roll number (simple format: BRANCH-YEAR-001)
+    const lastStudent = await Student.findOne({ branch: branch._id }).sort({ rollNumber: -1 });
+    let rollNumber = '001';
+    if (lastStudent) {
+      const lastRoll = lastStudent.rollNumber;
+      const lastNum = parseInt(lastRoll.split('-')[2] || '0');
+      rollNumber = (lastNum + 1).toString().padStart(3, '0');
+    }
+    const rollNumberStr = `${branch.code}-${normalizedYear}-${rollNumber}`;
+
     // Create student record
     let student;
     try {
       const studentData = {
         userId: user._id,
         universityId: universityId.trim(),
+        rollNumber: rollNumberStr,
         name: name.trim(),
         email: normalizedEmail,
         department: department.trim(),
-        section: section ? section.trim() : null,
-        semester: normalizedSemester,
-        year: normalizedYear,
+        campus: branch.campus,
+        program: branch.program,
+        branch: branch._id,
+        batch: batch._id,
+        section: section ? section.trim() : 'A',
+        currentSemester: normalizedSemester,
+        semester: normalizedSemester, // For backward compatibility
+        year: normalizedYear, // For backward compatibility
         subjects: subjects || [],
         createdBy: req.user._id,
         registrationStatus: null  // Explicitly set to null (face not registered yet)
@@ -356,7 +402,7 @@ router.put('/:id', [
     // Check permissions - Admin can only update students in their subjects
     if (req.user.role === 'admin') {
       const Subject = require('../models/Subject');
-      const adminSubjects = await Subject.find({ faculty: req.user._id });
+      const adminSubjects = await Subject.find({ 'faculty.teacher': req.user._id });
       const adminStudentIds = adminSubjects.reduce((acc, subj) => {
         return acc.concat(subj.students.map(s => s.toString()));
       }, []);
@@ -460,9 +506,11 @@ router.put('/:id/face', [
 // @access  Private (Admin, SuperAdmin)
 router.delete('/:id', auth, authorize('admin', 'superadmin'), async (req, res) => {
   try {
+    const { permanent } = req.query;
     console.log('=== DELETE STUDENT REQUEST ===');
     console.log('Student ID:', req.params.id);
     console.log('Deleted by:', req.user?.email, 'Role:', req.user?.role);
+    console.log('Deletion type:', permanent === 'true' ? 'PERMANENT' : 'SOFT');
 
     const student = await Student.findById(req.params.id);
     
@@ -474,38 +522,85 @@ router.delete('/:id', auth, authorize('admin', 'superadmin'), async (req, res) =
     console.log('Found student:', student.name, 'Email:', student.email);
     console.log('Associated User ID:', student.userId);
 
-    // Remove from subjects
-    const Subject = require('../models/Subject');
-    await Subject.updateMany(
-      { students: student._id },
-      { $pull: { students: student._id } }
-    );
-    console.log('Removed student from subjects');
-
-    // Delete related attendance records
-    const Attendance = require('../models/Attendance');
-    const attnResult = await Attendance.deleteMany({ studentId: student._id });
-    console.log(`Deleted ${attnResult.deletedCount} attendance records for student`);
-
-    // Store userId before deletion
     const userId = student.userId;
 
-    // Delete student record
-    await Student.findByIdAndDelete(req.params.id);
-    console.log('Student record deleted');
+    // PERMANENT DELETION - Cannot be recovered
+    if (permanent === 'true') {
+      // Remove from subjects
+      const Subject = require('../models/Subject');
+      await Subject.updateMany(
+        { students: student._id },
+        { $pull: { students: student._id } }
+      );
+      console.log('Removed student from subjects');
 
-    // Delete associated User record
-    if (userId) {
-      const deletedUser = await User.findByIdAndDelete(userId);
-      if (deletedUser) {
-        console.log('Associated User record deleted:', deletedUser.email);
-      } else {
-        console.log('Warning: User record not found (may have been already deleted)');
+      // Delete related attendance records
+      const Attendance = require('../models/Attendance');
+      const attnResult = await Attendance.deleteMany({ studentId: student._id });
+      console.log(`Deleted ${attnResult.deletedCount} attendance records`);
+
+      // Delete student record
+      await Student.findByIdAndDelete(req.params.id);
+      console.log('Student record permanently deleted');
+
+      // Delete associated User record (login credentials removed)
+      if (userId) {
+        const deletedUser = await User.findByIdAndDelete(userId);
+        if (deletedUser) {
+          console.log('Associated User account permanently deleted:', deletedUser.email);
+        } else {
+          console.log('Warning: User record not found (may have been already deleted)');
+        }
       }
-    }
 
-    console.log('=== STUDENT DELETED SUCCESSFULLY ===');
-    res.json({ message: 'Student and all related data deleted permanently' });
+      console.log('=== STUDENT PERMANENTLY DELETED ===');
+      return res.json({ 
+        message: 'Student, user account, and all related data permanently deleted',
+        details: {
+          studentName: student.name,
+          email: student.email,
+          attendanceRecords: attnResult.deletedCount,
+          loginCredentials: 'permanently removed',
+          canReRegister: true
+        }
+      });
+    }
+    
+    // SOFT DELETE (Default) - Can be restored
+    else {
+      // Use findByIdAndUpdate to avoid validation issues with missing required fields
+      await Student.findByIdAndUpdate(req.params.id, {
+        isDeleted: true,
+        deletedAt: new Date(),
+        deletedBy: req.user.id,
+        isActive: false
+      }, { runValidators: false });
+      console.log('Student record marked as deleted');
+
+      // Also mark user account as deleted (invalidate login)
+      if (userId) {
+        await User.findByIdAndUpdate(userId, {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedBy: req.user.id,
+          isActive: false
+        }, { runValidators: false });
+        console.log('User account marked as deleted (login disabled):', student.email);
+      }
+
+      console.log('=== STUDENT SOFT DELETED ===');
+      return res.json({ 
+        message: 'Student and user account marked as deleted (login disabled)',
+        details: {
+          studentName: student.name,
+          email: student.email,
+          loginStatus: 'disabled',
+          dataPreserved: true,
+          canBeRestored: true
+        },
+        note: 'Use DELETE /api/students/:id?permanent=true to permanently remove all data'
+      });
+    }
   } catch (error) {
     console.error('Delete student error:', error);
     console.error('Error stack:', error.stack);

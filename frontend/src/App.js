@@ -5,6 +5,8 @@ import Login from './pages/Login';
 import SuperAdminDashboard from './pages/SuperAdminDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import UniversityAdminDashboard from './pages/UniversityAdminDashboard';
+import CampusAdminDashboard from './pages/CampusAdminDashboard';
 import './App.css';
 
 const PrivateRoute = ({ children, allowedRoles }) => {
@@ -40,6 +42,22 @@ function App() {
             }
           />
           <Route
+            path="/university-admin"
+            element={
+              <PrivateRoute allowedRoles={['universityadmin']}>
+                <UniversityAdminDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/campus-admin"
+            element={
+              <PrivateRoute allowedRoles={['campusadmin']}>
+                <CampusAdminDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route
             path="/admin"
             element={
               <PrivateRoute allowedRoles={['admin', 'superadmin']}>
@@ -63,4 +81,3 @@ function App() {
 }
 
 export default App;
-

@@ -52,7 +52,6 @@ const FaceRegistrationScreen = ({ navigation }) => {
 
       // Send to backend
       const response = await api.post('/api/face/register', {
-        imageData: capturedFrames[0],
         frames: capturedFrames
       });
 

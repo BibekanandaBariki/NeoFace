@@ -6,6 +6,7 @@ import GlassCard from '../components/GlassCard';
 import AttendanceCharts from '../components/AttendanceCharts';
 import HeatmapCalendar from '../components/HeatmapCalendar';
 import FaceRecognitionCapture from '../components/FaceRecognitionCapture';
+import TeacherTimetableView from '../components/TeacherTimetableView';
 import '../styles/glassmorphism.css';
 
 const AdminDashboard = () => {
@@ -91,7 +92,13 @@ const AdminDashboard = () => {
     e.preventDefault();
     try {
       await api.post('/api/students', newStudent);
-      const loginInfo = `Student created successfully!\n\nLogin Credentials:\nEmail: ${newStudent.email}\nPassword: ${newStudent.universityId}\n\n(Student should use University ID as password)`;
+      const loginInfo = `Student created successfully!
+
+Login Credentials:
+Email: ${newStudent.email}
+Password: ${newStudent.universityId}
+
+(Student should use University ID as password)`;
       alert(loginInfo);
       setShowAddStudent(false);
       setNewStudent({
@@ -127,6 +134,11 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleAttendanceMarked = (newAttendanceRecord) => {
+    setAttendance(prev => [newAttendanceRecord, ...prev]);
+    // Optionally, show a more subtle notification instead of an alert
+  };
+
   const handleMarkAttendance = async (studentId, subjectId, date, status = 'present') => {
     try {
       await api.post('/api/attendance/manual', {
@@ -142,7 +154,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const tabs = ['overview', 'students', 'subjects', 'attendance', 'analytics'];
+  const tabs = ['overview', 'timetable', 'students', 'subjects', 'attendance', 'analytics'];
 
   return (
     <div style={{
@@ -231,6 +243,11 @@ const AdminDashboard = () => {
               </>
             )}
           </>
+        )}
+
+        {/* Timetable Tab */}
+        {activeTab === 'timetable' && (
+          <TeacherTimetableView />
         )}
 
         {/* Students Tab */}
@@ -566,10 +583,7 @@ const AdminDashboard = () => {
                         ) : (
                           <FaceRecognitionCapture
                             subjectId={selectedSubject}
-                            onAttendanceMarked={() => {
-                              fetchData();
-                              alert('Attendance marked successfully!');
-                            }}
+                            onAttendanceMarked={handleAttendanceMarked}
                           />
                         )}
                       </>

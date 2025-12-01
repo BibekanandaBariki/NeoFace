@@ -10,19 +10,22 @@ class FaceRecognitionService {
   async generateEmbedding(imageData, frames = []) {
     try {
       const payload = { frames: frames && frames.length ? frames : [imageData] };
+      console.log(`Generating embedding with ${payload.frames.length} frames`);
+      
       const resp = await axios.post(`${this.faceServiceUrl}/embed`, payload, {
         timeout: 30000,
         headers: { 'Content-Type': 'application/json' }
       });
 
       if (resp.data && resp.data.embedding && Array.isArray(resp.data.embedding)) {
+        console.log(`Embedding generated successfully. Dimension: ${resp.data.dim}, Processed frames: ${resp.data.processed_frames || 'N/A'}`);
         return resp.data.embedding;
       }
 
       console.error('Invalid embedding response from face service', resp.data);
       return null;
     } catch (error) {
-      console.error('Error calling face service /embed:', error.message || error);
+      console.error('Error calling face service /embed:', error.response?.data || error.message || error);
       return null;
     }
   }
@@ -52,6 +55,7 @@ class FaceRecognitionService {
         return null;
       }
 
+      console.log(`Attempting recognition against ${registeredStudents.length} registered students`);
       const inputEmbedding = await this.generateEmbedding(imageData, [imageData]);
       if (!inputEmbedding || inputEmbedding.length === 0) {
         console.log('Failed to generate embedding from input image');
@@ -64,13 +68,19 @@ class FaceRecognitionService {
       let highest = -1;
 
       for (const s of registeredStudents) {
-        if (!s.faceEmbedding || !Array.isArray(s.faceEmbedding) || s.faceEmbedding.length === 0) continue;
+        if (!s.faceEmbedding || !Array.isArray(s.faceEmbedding) || s.faceEmbedding.length === 0) {
+          console.log(`Skipping student ${s.name || s.universityId}: No valid embedding`);
+          continue;
+        }
         const sim = this.cosineSimilarity(normalizedInput, this.normalize(s.faceEmbedding));
+        console.log(`Similarity with ${s.name || s.universityId}: ${sim.toFixed(3)}`);
         if (sim > highest) {
           highest = sim;
           bestMatch = s;
         }
       }
+
+      console.log(`Best match: ${bestMatch?.name || 'None'}, Confidence: ${highest.toFixed(3)}, Threshold: ${this.threshold}`);
 
       if (bestMatch && highest >= this.threshold) {
         return {

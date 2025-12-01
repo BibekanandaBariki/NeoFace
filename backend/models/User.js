@@ -21,15 +21,32 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['student', 'admin', 'superadmin'],
+    enum: ['student', 'admin', 'superadmin', 'campusadmin', 'hod'],
     default: 'student'
   },
   universityId: {
     type: String,
     unique: true,
-    sparse: true
+    sparse: true,
+    uppercase: true
   },
-  department: String,
+  // For faculty/admin - which campus they belong to
+  assignedCampus: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Campus'
+  },
+  // For faculty - which branches they can teach
+  assignedBranches: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Branch'
+  }],
+  // For HOD role
+  managedBranch: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Branch'
+  },
+  employeeId: String,  // For staff identification
+  department: String,  // Legacy field
   isVerified: {
     type: Boolean,
     default: false
@@ -37,6 +54,19 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isDeleted: {
+    type: Boolean,
+    default: false
+  },
+  deletedAt: {
+    type: Date,
+    default: null
+  },
+  deletedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   },
   faceEmbedding: {
     type: [Number],

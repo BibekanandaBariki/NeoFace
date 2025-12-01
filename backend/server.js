@@ -21,14 +21,40 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
+
+// API Response Time Monitoring Middleware
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  
+  // Override res.end to capture response time
+  const originalEnd = res.end;
+  res.end = function(chunk, encoding) {
+    const duration = Date.now() - startTime;
+    evaluationMonitor.logApiResponseTime(req.path, duration);
+    originalEnd.call(this, chunk, encoding);
+  };
+  
+  next();
+});
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/campus', require('./routes/campus'));
+app.use('/api/programs', require('./routes/programs'));
+app.use('/api/branches', require('./routes/branches'));
+app.use('/api/batches', require('./routes/batches'));
 app.use('/api/students', require('./routes/students'));
 app.use('/api/subjects', require('./routes/subjects'));
-app.use('/api/timetable', require('./routes/timetable'));
+app.use('/api/semesters', require('./routes/semester'));
+app.use('/api/timetables', require('./routes/timetable'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/face', require('./routes/face'));
+app.use('/api/universities', require('./routes/universities'));
+app.use('/api/schools', require('./routes/schools'));
+app.use('/api/courses', require('./routes/courses'));
+app.use('/api/examination', require('./routes/examination'));
+app.use('/api/superadmin', require('./routes/superadmin'));
 
 // Root route
 app.get('/', (req, res) => {
@@ -40,8 +66,14 @@ app.get('/', (req, res) => {
       health: '/api/health',
       auth: '/api/auth',
       users: '/api/users',
+      campus: '/api/campus',
+      programs: '/api/programs',
+      branches: '/api/branches',
+      batches: '/api/batches',
       students: '/api/students',
       subjects: '/api/subjects',
+      semesters: '/api/semesters',
+      timetables: '/api/timetables',
       attendance: '/api/attendance',
       analytics: '/api/analytics',
       face: '/api/face'
@@ -119,10 +151,19 @@ io.on('connection', (socket) => {
   });
 });
 
+
+// Periodically save evaluation metrics
+setInterval(() => {
+  evaluationMonitor.saveMetrics();
+  evaluationMonitor.printSummary();
+}, 300000); // Save every 5 minutes
+
 // Make io accessible to routes
 app.set('io', io);
 
 // Initialize SuperAdmin helper
+const evaluationMonitor = require('./evaluation_monitor');
+
 const initSuperAdmin = async () => {
   try {
     const User = require('./models/User');
@@ -132,7 +173,9 @@ const initSuperAdmin = async () => {
     const superAdminExists = await User.findOne({ email: superAdminEmail }).maxTimeMS(5000);
     
     if (!superAdminExists) {
-      const hashedPassword = await bcrypt.hash('Attitude321@11', 10);
+      // Use environment variable for SuperAdmin password, with fallback
+      const defaultPassword = process.env.SUPERADMIN_PASSWORD || 'ChangeMe123!';
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
       await User.create({
         name: 'Bibekananda Bariki',
         email: superAdminEmail,
@@ -178,7 +221,7 @@ const connectDB = async () => {
 };
 
 // Server start
-const PORT = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📡 API Endpoints available at: http://localhost:${PORT}/api`);

@@ -1,0 +1,474 @@
+#################################################################################
+# Multi-University Automated Attendance System - Complete Workflow
+#################################################################################
+
+#################################################################################
+## 1. System Architecture Overview
+#################################################################################
+---------------------------------------------------------------------------------
+|                     Cloud Infrastructure                     |
+---------------------------------------------------------------------------------
+|  [Frontend (Web/Mobile)]  [Backend API (REST/GraphQL)]  [Database (Multi-tenant)]  |
+---------------------------------------------------------------------------------
+|               [Face Recognition Service]                  |
+|  [Face Detection]      [Face Verification]                |
+---------------------------------------------------------------------------------
+
+
+#################################################################################
+## 2. User Roles and Access Control
+#################################################################################
+SuperAdmin
+|-- Absolute System Control: Unrestricted access to all data and functions across all universities.
+|-- University Management: Create, view, edit, update, and permanently delete any university and its associated data.
+|-- Global User Management: View, edit, update, reset passwords, and permanently delete any user account (Admin, Teacher, Student).
+|-- Data Impersonation: Ability to log in as any other user to troubleshoot issues.
+|-- System-wide Configuration: Manage global system settings, security policies.
+|-- Global Auditing: View comprehensive audit logs of all actions performed by any user.
+
+University Admin
+|-- Manages only their university data
+|-- Creates Campuses, Schools, Courses, and defines Semesters.
+|-- Creates Teacher and Student accounts.
+|-- Manages timetables and schedules for each semester.
+|-- Generates university-wide reports.
+
+Teacher
+|-- Teaches assigned subjects for the current active semester.
+|-- Marks attendance (manual override if needed).
+|-- Views attendance reports for their classes.
+|-- Manages subject materials.
+
+Student
+|-- Enrolled in specific courses/sections for the current active semester.
+|-- Views their attendance records.
+|-- Views their specific, active timetable.
+|-- Receives notifications.
+
+
+#################################################################################
+## 3. Data Hierarchy Structure
+#################################################################################
+University
+|-- Campus
+|   |-- School
+|   |   |-- Course
+|   |   |   |-- Batch
+|   |   |   |   |-- Semester (e.g., Fall 2024, Spring 2025)
+|   |   |   |   |   |-- Section
+|   |   |   |   |   |   |-- Subject
+|   |   |   |   |   |   |   `-- Student
+|   |   |   |   |   |   `-- Timetable (Linked to this Semester)
+|   |   |   |   |   `-- Attendance Records
+|   |   |   |   `-- Students
+|   |   |   `-- Subjects
+|   |   `-- Teachers
+|   `-- Campus Admin
+`-- University Admin
+
+
+#################################################################################
+## 4. User Creation Workflows
+#################################################################################
+### 4.1 University Creation Flow (SuperAdmin)
+SuperAdmin Login
+|-- Click "Add University"
+|-- Fill University Details (Name, Address, Contact, Admin Account Details)
+|-- Create University Admin Account (Username, Email, Temporary Password)
+`-- University Created with Isolated Database Space
+
+### 4.2 Teacher Creation Flow (University Admin)
+University Admin Login
+|-- Navigate to "Teachers" Section
+|-- Click "Add Teacher"
+|-- Fill Teacher Details (Personal Info, Qualifications, Contact)
+|-- Assign to School(s) and Subject(s)
+|-- Create Login Credentials
+`-- Teacher Account Created
+
+### 4.3 Student Creation Flow (University Admin)
+University Admin Login
+|-- Navigate to "Students" Section
+|-- Click "Add Student"
+|-- Fill Student Details (Personal Info, Academic Info, Contact, Photo for FR)
+|-- Assign to Campus -> School -> Course -> Batch -> Semester -> Section
+|-- Create Login Credentials
+`-- Student Account Created
+
+
+#################################################################################
+## 5. Class Scheduling Workflow (Updated for Semester Control)
+#################################################################################
+University Admin Login
+|-- Navigate to "Timetable Management"
+|-- Select Campus -> School -> Course -> Batch -> **SEMESTER**
+|   `-- Note: The system will display the semester's defined start and end dates.
+|-- Create Timetable for the Selected Semester
+|   |-- Add Time Slots (Day, Start Time, End Time)
+|   |-- Assign Subjects & Teachers to Slots
+|   `-- Assign Sections to Classes
+|-- Validation Checks (Teacher Conflict, Section Conflict, Room Capacity)
+|-- Resolve Conflicts (if any)
+|-- **Activate Timetable:**
+|   |-- The admin marks this timetable as "Active" for its semester.
+|   |-- Only one timetable can be active per semester/section.
+|   `-- Upon activation, the previous semester's timetable is automatically archived.
+`-- Publish Timetable (now visible to Teachers and Students)
+
+
+#################################################################################
+## 6. Face Recognition Attendance Workflow
+#################################################################################
+Class Start Time (for Active Semester)
+|-- Teacher Activates Attendance System
+|-- System Initializes Camera and Face Recognition Service
+|-- Face Detection Process (Capture Stream -> Detect Faces -> Extract Features)
+|-- Face Verification Process (Compare with DB -> Match Enrolled Students -> Verify Identity)
+|-- Attendance Marking
+|   |-- Successful Verification: Mark "Present", Display Name, Add to List
+|   `-- Failed Verification: Mark "Unidentified", Flag for Review
+|-- Attendance Finalization
+|   |-- At End of Duration: Mark "Unidentified" as "Absent", Generate Report
+|   `-- Teacher Can Review, Edit, and Add Remarks
+|-- Data Synchronization
+|   |-- Update Student Attendance Records (Date, Time, Slot, Subject, Status)
+|   `-- Send Notifications (to Students/Parents)
+`-- Generate Reports (Daily, Subject-wise, Section-wise)
+
+
+#################################################################################
+## 7. Data Flow Diagram
+#################################################################################
+[Frontend Layer]
+(SuperAdmin Portal | Univ. Admin Portal | Teacher Portal | Student)
+          | API Calls
+          V
+[Backend API Layer]
+(Authentication Service | Authorization Service | Business Logic)
+          |
+          V
+[Data Access Layer]
+(University Isolation | Face Recognition Service)
+          |
+          V
+[Database Layer]
+(University 1 DB | University 2 DB | ... | Face Templates)
+
+
+#################################################################################
+## 8. Role-Based Access Control Implementation
+#################################################################################
+Request -> Authentication -> Authorization -> Business Logic -> Database
+
+Authentication:
+|-- Verify User Credentials
+|-- Generate JWT Token
+`-- Include Role and University ID in Token (if applicable)
+
+Authorization:
+|-- Extract Role and University ID from Token
+|-- Apply Access Rules:
+|   |-- SuperAdmin: Bypasses all `university_id` filters. Can access any endpoint. Can trigger "impersonation" mode.
+|   |-- University Admin: Can access only their university.
+|   |-- Teacher: Can access only their assigned classes for the active semester.
+|   `-- Student: Can access only their own data for the active semester.
+`-- Filter Database Queries Based on Access Rights (unless SuperAdmin)
+
+Database Isolation:
+|-- Option 1: Separate Database per University
+|-- Option 2: Shared Database with University ID Partitioning
+`-- Option 3: Schema-based Isolation
+(Note: SuperAdmin's queries must see all data sources.)
+
+
+#################################################################################
+## 9. Student Portal Workflow
+#################################################################################
+Student Login
+|-- Dashboard (Attendance Summary, Upcoming Classes for Active Semester, Notifications)
+|-- Attendance Section
+|   |-- View Attendance History (Filter by Subject, Date, Semester)
+|   |-- Attendance Statistics (Overall, Subject-wise %)
+|   `-- Download Attendance Report
+|-- Timetable Section
+|   |-- View Weekly Schedule (System auto-loads for CURRENT ACTIVE SEMESTER)
+|   |-- View Daily Schedule
+|   `-- Export Calendar
+`-- Profile Section (Personal Info, Update Face Data, Change Password)
+
+
+#################################################################################
+## 10. Teacher Portal Workflow
+#################################################################################
+Teacher Login
+|-- Dashboard (Today's Classes for Active Semester, Attendance Summary, Notifications)
+|-- Class Management (View Assigned Classes, Mark Attendance, View Student Lists)
+|-- Attendance Section
+|   |-- Mark Attendance (Select Class -> Start FR -> Manual Option)
+|   |-- View Attendance History (Filter by Class, Date, Student)
+|   `-- Generate Reports (Class-wise, Subject-wise)
+|-- Timetable Section
+|   |-- View Teaching Schedule (System auto-loads for CURRENT ACTIVE SEMESTER)
+|   `-- Export Calendar
+`-- Profile Section (Personal Info, Change Password)
+
+
+#################################################################################
+## 11. University Admin Portal Workflow
+#################################################################################
+University Admin Login
+|-- Dashboard (University Statistics, Attendance Overview, System Alerts)
+|-- Institution Management (Campus, School, Course, Batch)
+|-- **Academic Management**
+|   |-- **Semester Management:**
+|   |   |-- Add/Edit Semester (e.g., "Fall 2024", "Spring 2025")
+|   |   `-- Define Start Date and End Date for each semester.
+|   |-- Timetable Management:
+|   |   |-- Create timetables for a specific semester.
+|   |   |-- Activate/Deactivate timetables for a semester.
+|   |   `-- View archived timetables from past semesters.
+|   |-- Subject Management
+|   `-- Section Management
+|-- User Management (Teacher, Student)
+|-- Attendance Management (View Reports, Generate Analytics, Export)
+`-- System Settings (Academic Calendar, Attendance Policies)
+
+
+#################################################################################
+## 11.1 SuperAdmin Portal Workflow
+#################################################################################
+SuperAdmin Login (with mandatory MFA)
+|-- Global Dashboard (System-wide Stats, Active Users, System Health, Audit Logs)
+|-- University Management (Add/Edit/Delete Universities, Manage University Admins)
+|-- Global User Management (Search/View/Edit/Disable/Delete ANY user, Reset Passwords)
+|-- Data Impersonation (Select a User -> Impersonate -> All actions logged as SuperAdmin)
+|-- System-wide Auditing (View/Filter/Export comprehensive audit logs)
+`-- System Configuration (Global Security Policies, Integrations, DB Maintenance)
+
+
+#################################################################################
+## 12. Face Recognition Technical Workflow
+#################################################################################
+Face Recognition Process
+|-- Enrollment Phase (Registration -> Capture Images -> Preprocess -> Feature Extraction -> Store Embedding)
+|-- Recognition Phase (Initiate Camera -> Detect Faces -> Preprocess -> Extract Features -> Compare -> Verify -> Return ID)
+`-- Liveness Detection (Optional: Blink, Movement Analysis)
+
+
+#################################################################################
+## 13. Scalability Considerations
+#################################################################################
+System Scalability Design
+|-- Frontend (PWA, Responsive Design, Lazy Loading)
+|-- Backend (Microservices, API Gateway, Load Balancing)
+|-- Database (Horizontal Scaling, Read Replicas, Sharding by University)
+|-- Face Recognition (GPU-acceleration, Distributed Matching, Edge Computing)
+`-- Infrastructure (Containerization, Auto-scaling, CDN)
+
+
+#################################################################################
+## 14. Security Implementation
+#################################################################################
+Security Measures
+|-- Authentication (Mandatory MFA for SuperAdmin, Password Complexity, Session Mgmt)
+|-- Data Protection (Encryption at Rest & in Transit, Data Anonymization)
+|-- Face Data Security (Encrypted Storage, Consent Mgmt, Retention Policies)
+|-- Access Control (RBAC, Least Privilege, Immutable Audit Trails for SuperAdmin)
+`-- System Security (Regular Updates, Penetration Testing, Vulnerability Scanning)
+
+#################################################################################
+# End of Workflow Document
+#################################################################################
+
+#################################################################################
+# Multi-University Automated Attendance System - Permanent Workflow
+#
+# Core Principles:
+# 1. Role-Based Access Control (RBAC): Every action, view, and piece of data is
+#    strictly governed by the user's role and their position in the hierarchy.
+# 2. Data Isolation: University A's data is completely invisible and inaccessible
+#    to University B, enforced at the database and application level.
+# 3. Auditability: All critical actions (especially by SuperAdmins) are logged
+#    with user ID, timestamp, and reason.
+# 4. Semester-Centric Operations: All academic activities (timetables, attendance,
+#    eligibility) are bound within a defined semester.
+#################################################################################
+
+#################################################################################
+## 1. User Roles & Permission Matrix
+#################################################################################
+# This matrix defines the granular permissions for each role.
+# (C: Create, R: Read, U: Update, D: Delete, O: Override/Approve)
+
++------------------+-------+-------+--------------+---------+---------+
+|      Entity      | Super | Uni    | Campus Admin | Teacher | Student |
+|                  | Admin  | Admin  |              |         |         |
++------------------+-------+-------+--------------+---------+---------+
+| University       | CRUD  | N/A   | N/A          | N/A     | N/A     |
+| Campus           | CRUD  | CRUD  | R            | R (Own) | R (Own) |
+| School/Course    | CRUD  | CRUD  | R            | R (Own) | R (Own) |
+| Batch/Semester   | CRUD  | CRUD  | R            | R (Own) | R (Own) |
+| Section          | CRUD  | CRUD  | CRUD         | R (Own) | R (Own) |
+| Subject (PP/PR)  | CRUD  | CRUD  | CRUD         | R (Own) | R (Own) |
+| Timetable        | CRUDO | CRUD  | R            | R (Own) | R (Own) |
+| User (Admin)     | CRUD  | R     | N/A          | N/A     | N/A     |
+| User (Teacher)   | CRUD  | CRUD  | CRUD         | R (Self)| N/A     |
+| User (Student)   | CRUD  | CRUD  | CRUD         | R (Class)| R(Self)|
+| Attendance       | CRUDO | R     | R            | CRUD(Own)| R (Own)|
+| Admit Cards      | CRUDO | R     | CRUDO        | N/A     | R       |
+| System Requests  | CRUDO | R     | N/A          | C       | N/A     |
++------------------+-------+-------+--------------+---------+---------+
+# Legend:
+# N/A: Not Applicable. User has no interaction with this entity.
+# R(Own): Can only read data related to their own context (e.g., their classes, their profile).
+# CRUD(Own): Teacher can mark attendance for their own classes only.
+# CRUDO: Full permissions including special Override or Approval functions.
+
+#################################################################################
+## 2. System Data Hierarchy (Immutable)
+#################################################################################
+University
+|-- Campus
+|   |-- School
+|   |   |-- Course
+|   |   |   |-- Batch
+|   |   |   |   `-- Semester (e.g., Fall 2024, Spring 2025)
+|   |   |   |       `-- Section
+|   |   |   |           |-- Student
+|   |   |   |           `-- Subject
+|   |   |   |               |-- Lecture (PP)
+|   |   |   |               |-- Practical (PR)
+|   |   |   |               `-- Tutorial (TUT)
+|   |   `-- Teachers
+|   `-- Campus Admin
+`-- University Admin
+
+#################################################################################
+## 3. Core Workflows
+#################################################################################
+
+### 3.A. Onboarding & University Setup
+1.  SuperAdmin logs in.
+2.  Navigates to "System Administration" -> "Universities".
+3.  Clicks "Create University".
+4.  Fills in University details (Name, Address, etc.).
+5.  Creates the primary University Admin account (Email, Temporary Password).
+6.  System provisions a new, isolated data space for the university.
+7.  University Admin receives credentials and logs in to begin setup.
+
+### 3.B. Institutional Structure Creation (University Admin)
+1.  University Admin logs in.
+2.  Navigates to "Institution Management".
+3.  Creates entities in hierarchical order:
+    a.  Create Campus(s).
+    b.  For each Campus, create School(s) (e.g., School of Engineering).
+    c.  For each School, create Course(s) (e.g., B.Tech CSE).
+    d.  For each Course, create Batch(es) based on admission year.
+    e.  For each Batch, defines Semesters (e.g., "Semester 1", "Semester 2") with start/end dates.
+4.  Navigates to "User Management" -> "Campus Admins".
+5.  Creates Campus Admin accounts and assigns them to specific campuses.
+
+### 3.C. User & Academic Management (Campus Admin)
+1.  Campus Admin logs in.
+2.  Creates Teacher accounts and assigns them to Schools and Subjects.
+3.  Creates Student accounts, assigning them to a specific Section within a Semester.
+4.  Defines Subjects for each course, specifying if they have Lecture (PP), Practical (PR), or Tutorial (TUT) components.
+5.  Creates Timetables for the current Semester, assigning Teachers to specific subject slots (PP/PR/TUT) for each Section.
+
+### 3.D. The Daily Attendance Flow (Teacher)
+1.  At class start time, Teacher logs in and navigates to "My Classes".
+2.  Selects the active class for the current time slot (e.g., "B.Tech CSE - Sec A - Physics (PR)").
+3.  Clicks "Start Attendance Session".
+4.  System initializes the classroom camera and the Face Recognition service.
+5.  **Detection & Verification:**
+    a.  System continuously scans for faces.
+    b.  Upon detection, it extracts facial features.
+    c.  It matches these features against the enrolled students for *this specific class*.
+    d.  A successful match (above confidence threshold) marks the student as "Present" and displays their name on the live feed and a growing "Present List".
+6.  **Session End:**
+    a.  After the class duration ends (or the teacher manually stops it), the session concludes.
+    b.  All students not marked "Present" are automatically marked "Absent".
+    c.  Teacher can review the final list, add manual remarks (e.g., "Late"), and submit.
+7.  **Data Synchronization:** The attendance record (Student ID, Subject Type, Date, Time Slot, Status) is atomically updated in the database.
+
+### 3.E. The Admit Card Generation Workflow (Campus Admin)
+1.  Campus Admin logs in and navigates to "Examination" -> "Admit Card Generation".
+2.  Selects the examination parameters: Campus, School, Course, Batch, and Semester.
+3.  Clicks "Run Eligibility Check".
+4.  **System Logic (Executed for each student in the selection):**
+    a.  Calculate `overall_attendance_percentage` for the semester.
+    b.  For each subject in the semester:
+        i.  Calculate `subject_attendance_percentage` by aggregating attendance from all its components (PP, PR, TUT).
+    c.  **Eligibility Rule:** `IF (overall_attendance >= 75%) AND (ALL subject_attendances >= 75%) THEN student is "Eligible" ELSE student is "Not Eligible"`.
+5.  **System Output:** The screen displays two distinct tables:
+    a.  **Eligible Students:** A list of students who meet the criteria.
+    b.  **Not Eligible Students:** A list of students who do not. This table has a "View Details" button.
+6.  Admin can click "View Details" for any ineligible student to see a breakdown, e.g., "Overall Attendance: 78%, Physics: 72%, Chemistry: 81%".
+7.  Once satisfied, the Admin selects the "Eligible Students" table and clicks "Generate Admit Cards".
+8.  System generates a PDF admit card for each eligible student, which can be downloaded individually or as a combined ZIP file.
+
+### 3.F. The SuperAdmin Override & Request Workflow
+1.  **Retake Attendance:**
+    a.  SuperAdmin logs in -> "System Administration" -> "Attendance Overrides".
+    b.  Uses filters to locate the specific class (University -> Campus -> Section -> Subject -> Date -> Time Slot).
+    c.  The system loads the *original submitted attendance* for that slot.
+    d.  SuperAdmin can change the status of any student (Present/Absent).
+    e.  A mandatory "Reason for Override" text field must be filled.
+    f.  Upon submission:
+        i.  The original record is archived with a reference to the override.
+        ii. A new attendance record is created with the SuperAdmin's changes.
+        iii. An immutable audit log entry is created: `SuperAdmin [ID] overrode attendance for [Class] on [Date] at [Time]. Reason: [Reason]`.
+2.  **Accept Requests:**
+    a.  Other users (e.g., a University Admin) can create a "Request" (e.g., "Request to delete inactive Campus X").
+    b.  SuperAdmin navigates to "System Administration" -> "Pending Requests".
+    c.  A dashboard lists all pending requests with details, requester, and date.
+    d.  SuperAdmin can "Approve" or "Deny" each request, adding a comment.
+    e.  The system logs the decision and notifies the original requester.
+
+#################################################################################
+## 4. Role-Based Portal Views (Visual Data & Access Control)
+#################################################################################
+# What each user sees upon logging in is tailored to their role and permissions.
+
+### SuperAdmin Portal
+*   **Dashboard:** Global system statistics, active users count, server health, a list of pending requests.
+*   **Navigation:** System Administration, University Management, Global User Search, Audit Logs, Settings.
+*   **No university-specific data is shown by default.** The SuperAdmin must choose a university to inspect.
+
+### University Admin Portal
+*   **Dashboard:** Statistics for *their university only* (student/teacher count, average attendance).
+*   **Navigation:** Institution Management (Campuses, Schools), User Management (Campus Admins, Teachers, Students), Academic Calendar, Semester Management.
+*   **Cannot see or manage data from other universities.**
+
+### Campus Admin Portal
+*   **Dashboard:** Statistics for *their campus only*.
+*   **Navigation:** Teacher/Student Management, Subject Management, Timetable View, **Examination -> Admit Card Generation**.
+*   **Can only view and manage data for the campus they are assigned to.**
+
+### Teacher Portal
+*   **Dashboard:** Today's schedule, a quick attendance summary for the week.
+*   **Navigation:** My Classes, **Mark Attendance**, My Students (list of students in their classes), Attendance Reports.
+*   **Only sees their own classes, timetables, and student lists.**
+
+### Student Portal
+*   **Dashboard:** A clear summary of attendance.
+    *   **Overall Attendance:** A large, prominent percentage for the current semester.
+    *   **Subject-wise Attendance:** A list of all subjects with their individual attendance percentages, color-coded (e.g., Green for >75%, Red for <75%).
+    *   **Recent Activity:** A log of the last few classes attended.
+*   **Navigation:**
+    *   **Attendance:** A detailed view where they can see **Day-wise Attendance** on a calendar, and filter by subject.
+    *   **Timetable:** Their personal, weekly class schedule.
+    *   **My Profile:** Personal details, ability to update their photo for face recognition.
+    *   **Examination:** A section to **View and Download** their generated admit card.
+
+#################################################################################
+## 5. Data & Security Model Summary
+#################################################################################
+*   **Authentication:** Secure login with JWT tokens. MFA mandatory for SuperAdmins.
+*   **Authorization:** Middleware on every API endpoint checks the user's role and permissions from the matrix before processing the request.
+*   **Data Isolation:** All database queries are automatically filtered by `university_id` and `campus_id` based on the logged-in user's context, unless the user is a SuperAdmin.
+*   **Audit Trail:** A dedicated, append-only log table records all critical actions (create, delete, override) with user ID, timestamp, IP address, and change details.
+
+#################################################################################
+# End of Permanent Workflow Document
+#################################################################################
