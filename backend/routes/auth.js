@@ -165,6 +165,11 @@ router.get('/me', auth, async (req, res) => {
       const student = await Student.findOne({ userId: req.user._id });
       
       if (student) {
+        // Copy student-specific information to user object
+        user.department = student.department || user.department;
+        user.section = student.section;
+        user.semester = student.semester;
+        
         // Check if face is actually registered (has embedding)
         const hasFaceEmbedding = student.faceEmbedding && student.faceEmbedding.length > 0;
         
@@ -198,15 +203,28 @@ router.get('/me', auth, async (req, res) => {
         user.registrationStatus = null;
       }
     }
-    
+
     // Ensure registrationStatus is included in response (convert to plain object if needed)
     const responseUser = user.toObject ? user.toObject() : user;
+
+    // Explicitly add student-specific fields for students
+    if (user.role === 'student') {
+      responseUser.department = user.department;
+      responseUser.section = user.section;
+      responseUser.semester = user.semester;
+    }
+
     if (!responseUser.hasOwnProperty('registrationStatus')) {
       responseUser.registrationStatus = user.registrationStatus || null;
     }
     
+    // Ensure consistent ID field (use 'id' like in login response)
+    if (responseUser._id && !responseUser.id) {
+      responseUser.id = responseUser._id;
+    }
+    
     console.log('API /auth/me response for student:', {
-      userId: responseUser._id,
+      userId: responseUser.id || responseUser._id,
       role: responseUser.role,
       faceRegistered: responseUser.faceRegistered,
       registrationStatus: responseUser.registrationStatus
@@ -241,4 +259,16 @@ router.post('/verify-token', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+
+
+
+
+
+
+
+
+
+
+
 

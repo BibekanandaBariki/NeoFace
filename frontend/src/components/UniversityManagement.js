@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from './GlassCard';
+import api from '../utils/api';
 
 const UniversityManagement = () => {
   const [universities, setUniversities] = useState([]);
@@ -33,18 +34,8 @@ const UniversityManagement = () => {
   const fetchUniversities = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/universities', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUniversities(data);
-      }
+      const response = await api.get('/api/universities?isActive=true');
+      setUniversities(response.data);
     } catch (error) {
       console.error('Error fetching universities:', error);
     } finally {
@@ -55,78 +46,60 @@ const UniversityManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Debug: Log the exact data being sent
+    console.log('Submitting university data:', formData);
+    console.log('Name field:', formData.name);
+    console.log('Code field:', formData.code);
+    
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const url = editingUniversity 
-        ? `/api/universities/${editingUniversity._id}` 
-        : '/api/universities';
-      
-      const response = await fetch(url, {
-        method: editingUniversity ? 'PUT' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setShowForm(false);
-        setEditingUniversity(null);
-        setFormData({
-          name: '',
-          code: '',
-          address: {
-            street: '',
-            city: '',
-            state: '',
-            country: '',
-            pincode: ''
-          },
-          contactInfo: {
-            phone: '',
-            email: '',
-            website: ''
-          },
-          establishedYear: '',
-          accreditation: ''
-        });
-        fetchUniversities();
+      if (editingUniversity) {
+        await api.put(`/api/universities/${editingUniversity._id}`, formData);
       } else {
-        const error = await response.json();
-        console.error('Error saving university:', error);
+        await api.post('/api/universities', formData);
       }
+      
+      setShowForm(false);
+      setEditingUniversity(null);
+      setFormData({
+        name: '',
+        code: '',
+        address: {
+          street: '',
+          city: '',
+          state: '',
+          country: '',
+          pincode: ''
+        },
+        contactInfo: {
+          phone: '',
+          email: '',
+          website: ''
+        },
+        establishedYear: '',
+        accreditation: ''
+      });
+      fetchUniversities();
     } catch (error) {
       console.error('Error saving university:', error);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error response status:', error.response?.status);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this university?')) return;
+    if (!window.confirm('Are you sure you want to permanently delete this university? This action cannot be undone.')) return;
     
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/universities/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        fetchUniversities();
-      } else {
-        const error = await response.json();
-        console.error('Error deleting university:', error);
-      }
+      await api.delete(`/api/universities/${id}?permanent=true`);
+      fetchUniversities();
     } catch (error) {
       console.error('Error deleting university:', error);
+      // Show error to user
+      alert('Error deleting university: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }
@@ -158,6 +131,8 @@ const UniversityManagement = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     
+    console.log('handleChange called:', name, '=', value); // Debug log
+    
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
       setFormData(prev => ({
@@ -176,9 +151,9 @@ const UniversityManagement = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">University Management</h2>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h2 style={{ color: 'white', margin: 0 }}>University Management</h2>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -204,175 +179,207 @@ const UniversityManagement = () => {
             });
             setShowForm(!showForm);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          className="glass-button"
+          style={{ padding: '0.75rem 1.5rem' }}
         >
-          {showForm ? 'Cancel' : 'Add University'}
+          {showForm ? 'Cancel' : '+ Add University'}
         </motion.button>
       </div>
 
       {showForm && (
-        <GlassCard className="mb-6 p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card"
+          style={{ padding: '1.5rem', marginBottom: '2rem' }}
+        >
+          <h3 style={{ color: 'white', marginBottom: '1.5rem' }}>
             {editingUniversity ? 'Edit University' : 'Add New University'}
           </h3>
           
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Name *</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Name *</label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="University Name"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Code *</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Code *</label>
               <input
                 type="text"
                 name="code"
                 value={formData.code}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="UNIV"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Established Year</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Established Year</label>
               <input
                 type="number"
                 name="establishedYear"
                 value={formData.establishedYear}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="2010"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Accreditation</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Accreditation</label>
               <input
                 type="text"
                 name="accreditation"
                 value={formData.accreditation}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="A+"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Street</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Street</label>
               <input
                 type="text"
                 name="address.street"
                 value={formData.address.street}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="Street Address"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">City</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>City</label>
               <input
                 type="text"
                 name="address.city"
                 value={formData.address.city}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="City"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">State</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>State</label>
               <input
                 type="text"
                 name="address.state"
                 value={formData.address.state}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="State"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Country</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Country</label>
               <input
                 type="text"
                 name="address.country"
                 value={formData.address.country}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="Country"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Pincode</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Pincode</label>
               <input
                 type="text"
                 name="address.pincode"
                 value={formData.address.pincode}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="123456"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Phone</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Phone</label>
               <input
                 type="text"
                 name="contactInfo.phone"
                 value={formData.contactInfo.phone}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="1234567890"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Email</label>
               <input
                 type="email"
                 name="contactInfo.email"
                 value={formData.contactInfo.email}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="admin@university.edu"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Website</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Website</label>
               <input
                 type="url"
                 name="contactInfo.website"
                 value={formData.contactInfo.website}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="https://university.edu"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
-            <div className="md:col-span-2 flex justify-end gap-3">
+            <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                className="glass-button"
+                style={{ padding: '0.5rem 1rem' }}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                className="glass-button"
+                style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
               >
                 {loading ? 'Saving...' : editingUniversity ? 'Update' : 'Create'}
               </button>
             </div>
           </form>
-        </GlassCard>
+        </motion.div>
       )}
 
       <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Universities</h3>
+        <h3 style={{ color: 'white', margin: '0 0 1rem 0' }}>Universities</h3>
         
         {loading && (
           <div className="text-center py-8">
@@ -381,66 +388,83 @@ const UniversityManagement = () => {
         )}
         
         {!loading && universities.length === 0 && (
-          <div className="text-center py-8 text-gray-400">
-            No universities found. Add a new university to get started.
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            padding: '3rem',
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            margin: '1rem 0'
+          }}>
+            <div style={{ 
+              textAlign: 'center', 
+              color: 'rgba(255,255,255,0.7)',
+              padding: '2rem',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '8px'
+            }}>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>No universities created yet</h3>
+              <p style={{ margin: 0 }}>Click "Add University" to create your first university</p>
+            </div>
           </div>
         )}
         
         {!loading && universities.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-3 px-4 text-gray-300">Name</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Code</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Location</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Contact</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Status</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {universities.map((university) => (
-                  <tr key={university._id} className="border-b border-gray-800 hover:bg-gray-800/50">
-                    <td className="py-3 px-4 text-white">{university.name}</td>
-                    <td className="py-3 px-4 text-gray-300">{university.code}</td>
-                    <td className="py-3 px-4 text-gray-300">
-                      {university.address?.city}, {university.address?.state}
-                    </td>
-                    <td className="py-3 px-4 text-gray-300">
-                      {university.contactInfo?.email}
-                      <br />
-                      {university.contactInfo?.phone}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        university.isActive 
-                          ? 'bg-green-900/50 text-green-400' 
-                          : 'bg-red-900/50 text-red-400'
-                      }`}>
-                        {university.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(university)}
-                          className="text-blue-400 hover:text-blue-300"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(university._id)}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+            {universities.map((university) => (
+              <motion.div
+                key={university._id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="glass-card"
+                style={{ padding: '1.5rem' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                  <div>
+                    <h3 style={{ color: 'white', margin: 0, marginBottom: '0.25rem' }}>{university.name}</h3>
+                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>
+                      Code: {university.code}
+                    </div>
+                  </div>
+                  <div style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem',
+                    background: university.isActive ? 'rgba(76, 209, 55, 0.2)' : 'rgba(255, 107, 107, 0.2)',
+                    color: university.isActive ? '#4cd137' : '#ff6b6b'
+                  }}>
+                    {university.isActive ? 'Active' : 'Inactive'}
+                  </div>
+                </div>
+
+                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                  {university.address?.city && <div>📍 {university.address.city}, {university.address.state}</div>}
+                  {university.contactInfo?.phone && <div>📞 {university.contactInfo.phone}</div>}
+                  {university.contactInfo?.email && <div>📧 {university.contactInfo.email}</div>}
+                  {university.establishedYear && <div>📅 Est. {university.establishedYear}</div>}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => handleEdit(university)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.2)' }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(university._id)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255, 107, 107, 0.2)' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
       </GlassCard>

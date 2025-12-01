@@ -46,7 +46,7 @@ const universitySchema = new mongoose.Schema({
 });
 
 // Indexes
-universitySchema.index({ code: 1 });
-universitySchema.index({ name: 1 });
+universitySchema.index({ code: 1 }, { unique: true, partialFilterExpression: { isActive: { $eq: true } } });
+universitySchema.index({ name: 1 }, { unique: true, partialFilterExpression: { isActive: { $eq: true } } });
 
 module.exports = mongoose.model('University', universitySchema);

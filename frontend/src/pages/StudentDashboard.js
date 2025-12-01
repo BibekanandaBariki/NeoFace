@@ -31,60 +31,127 @@ const StudentDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [subjectsRes, attendanceRes, timetableRes, analyticsRes] = await Promise.all([
-        api.get('/api/subjects'),
-        api.get('/api/attendance'),
-        api.get('/api/timetables'),
-        api.get('/api/analytics/overview')
-      ]);
+      // First get student info
+      const userData = await api.get('/api/auth/me');
+      
+      // Fetch subjects for this student (already filtered by backend)
+      const subjectsRes = await api.get('/api/subjects');
+      
+      // Fetch attendance for this student (already filtered by backend)
+      const attendanceRes = await api.get('/api/attendance');
+      
+      // Initialize timetable data
+      let timetableRes = { data: {} };
+      let studentTimetableInfo = {
+        branch: userData.data.department,
+        section: userData.data.section || '',
+        semester: userData.data.semester
+      };
+      
+      // Fetch timetable for student's branch/section
+      console.log('=== TIMETABLE FETCH ATTEMPT ===');
+      console.log('Student data for timetable:', {
+        department: userData.data.department,
+        section: userData.data.section
+      });
+
+      if (userData.data.department && userData.data.section) {
+        console.log('Attempting to fetch section timetable');
+        
+        // Get the branch ObjectId
+        let branchId = userData.data.department;
+        console.log('Initial branchId:', branchId);
+        
+        // If department is a string code (like "CSE"), fetch the actual Branch ObjectId
+        if (typeof userData.data.department === 'string' && userData.data.department.length < 24) {
+          try {
+            console.log('Fetching branch ID for code:', userData.data.department);
+            const branchRes = await api.get('/api/branches', {
+              params: { code: userData.data.department }
+            });
+            console.log('Branch response:', branchRes.data);
+            
+            if (branchRes.data && branchRes.data.length > 0) {
+              branchId = branchRes.data[0]._id;
+              // Update the studentTimetableInfo with the proper branch ID
+              studentTimetableInfo.branch = branchId;
+              console.log('Found branch ID:', branchId);
+            } else {
+              console.log('No branch found for code:', userData.data.department);
+            }
+          } catch (branchError) {
+            console.log('Could not fetch branch ID, using code as fallback:', branchError);
+          }
+        }
+        
+        // Try to get semester ID
+        console.log('Fetching semesters for branch:', branchId);
+        try {
+          const semestersRes = await api.get('/api/semesters', {
+            params: {
+              branch: branchId,
+              isActive: true
+            }
+          });
+          console.log('Semesters response:', semestersRes.data);
+          
+          // Find semester matching student's semester number
+          const activeSemester = semestersRes.data.find(s => {
+            const branchMatch = s.branch.toString() === branchId.toString();
+            const semesterMatch = s.semesterNumber === parseInt(userData.data.semester);
+            console.log('Checking semester:', s.semesterNumber, 'Branch match:', branchMatch, 'Semester match:', semesterMatch);
+            return branchMatch && semesterMatch;
+          });
+          
+          console.log('Active semester found:', activeSemester);
+          
+          // Use the semester ID, not the semester number
+          const semesterId = activeSemester?._id || userData.data.semester;
+          
+          // Update the studentTimetableInfo with the proper semester ID
+          studentTimetableInfo.semester = semesterId;
+          
+          console.log('Fetching timetable with:', {
+            branchId,
+            section: userData.data.section,
+            semesterId
+          });
+          
+          // Try to get section timetable
+          try {
+            timetableRes = await api.get(`/api/timetables/section/${branchId}/${userData.data.section}/${semesterId}`);
+            console.log('Section timetable response:', timetableRes.data);
+          } catch (timetableError) {
+            console.log('Could not fetch section timetable:', timetableError.response || timetableError);
+            // Fallback to general timetables endpoint (already filtered by backend)
+            timetableRes = await api.get('/api/timetables');
+          }
+        } catch (semesterError) {
+          console.log('Could not fetch semesters:', semesterError);
+          // Fallback to general timetables endpoint (already filtered by backend)
+          timetableRes = await api.get('/api/timetables');
+        }
+      } else {
+        console.log('Missing department or section, falling back to general timetables');
+        // Fallback to general timetables endpoint (already filtered by backend)
+        timetableRes = await api.get('/api/timetables');
+      }
+      
+      // Fetch analytics
+      const analyticsRes = await api.get('/api/analytics/overview');
 
       setSubjects(subjectsRes.data);
       setAttendance(attendanceRes.data);
       setTimetable(timetableRes.data);
       setAnalytics(analyticsRes.data);
-      
-      // Check face registration status
-      const userData = await api.get('/api/auth/me');
+
+      console.log('Timetable data:', timetableRes.data);
+
       const isFaceRegistered = userData.data.faceRegistered || false;
       let regStatus = userData.data.registrationStatus; // Can be null, 'pending', 'approved', or 'rejected'
       
-      // Fetch active semester for student's department and semester number
-      const semestersRes = await api.get('/api/semesters', {
-        params: {
-          branch: userData.data.department,
-          isActive: true
-        }
-      });
-      
-      // Find semester matching student's semester number
-      const activeSemester = semestersRes.data.find(s => 
-        s.branch === userData.data.department && 
-        s.semesterNumber === parseInt(userData.data.semester)
-      );
-      
-      // Store student info for timetable
-      setStudentInfo({
-        branch: userData.data.department,
-        section: userData.data.section || '',
-        semester: activeSemester?._id || userData.data.semester
-      });
-      
-      console.log('Student Info for timetable:', {
-        branch: userData.data.department,
-        section: userData.data.section,
-        semesterId: activeSemester?._id,
-        semesterNumber: userData.data.semester,
-        activeSemester: activeSemester
-      });
-      
-      // Debug log (remove in production)
-      console.log('Face registration status:', { 
-        isFaceRegistered, 
-        regStatus, 
-        userData: userData.data,
-        faceRegisteredFromAPI: userData.data.faceRegistered,
-        registrationStatusFromAPI: userData.data.registrationStatus
-      });
+      // Store student info for timetable (with proper IDs)
+      setStudentInfo(studentTimetableInfo);
       
       // Set registration status, default to 'not_registered' if null/undefined/empty
       if (regStatus === null || regStatus === undefined || regStatus === '') {
@@ -298,8 +365,7 @@ const StudentDashboard = () => {
                   <p style={{ 
                     color: 'rgba(255, 255, 255, 0.7)', 
                     fontSize: '0.85rem', 
-                    marginTop: '0.5rem' 
-                  }}>
+                    marginTop: '0.5rem' }}>
                     Your face registration is waiting for admin approval
                   </p>
                 )}
@@ -384,9 +450,9 @@ const StudentDashboard = () => {
                   <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem' }}>
                     {subject.department} | Semester {subject.semester}
                   </p>
-                  {subject.faculty && (
+                  {subject.faculty && subject.faculty.length > 0 && (
                     <p style={{ color: 'rgba(255, 255, 255, 0.6)', fontSize: '0.85rem', marginTop: '0.5rem' }}>
-                      Faculty: {subject.faculty.name}
+                      Faculty: {subject.faculty[0].teacher?.name || 'Not assigned'}
                     </p>
                   )}
                 </motion.div>
@@ -403,9 +469,7 @@ const StudentDashboard = () => {
         {/* Timetable Tab */}
         {activeTab === 'timetable' && studentInfo && (
           <SectionTimetableView 
-            branch={studentInfo.branch}
-            section={studentInfo.section}
-            semester={studentInfo.semester}
+            timetable={timetable}
           />
         )}
 

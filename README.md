@@ -68,8 +68,8 @@ pip install -r requirements.txt
 
 1. Create a `.env` file in the backend directory with the following variables:
 ```env
-MONGODB_URI=mongodb://localhost:27017/neoface
-JWT_SECRET=your_jwt_secret_here
+MONGODB_URI=YOUR_MONGODB_CONNECTION_STRING_HERE
+JWT_SECRET=YOUR_STRONG_RANDOM_SECRET_HERE_(32+_CHARACTERS)
 PORT=5000
 ```
 
@@ -99,8 +99,9 @@ python app.py
 
 ## Default SuperAdmin Credentials
 
-- Email: bibekbariki786@gmail.com
-- Password: Attitude321@11
+- Email: YOUR_SUPERADMIN_EMAIL_HERE
+- Password: Set via SUPERADMIN_PASSWORD environment variable
+- Note: You will be prompted to change the password on first login
 
 ## Project Structure
 

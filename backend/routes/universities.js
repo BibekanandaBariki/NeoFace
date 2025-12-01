@@ -64,11 +64,17 @@ router.post('/', auth, authorize('superadmin'), async (req, res) => {
       });
     }
 
-    // Check if university code already exists
-    const existingUniversity = await University.findOne({ code: code.toUpperCase() });
+    // Check if active university with same code or name already exists
+    const existingUniversity = await University.findOne({ 
+      $or: [
+        { code: { $regex: new RegExp(`^${code}$`, 'i') }, isActive: true },
+        { name: { $regex: new RegExp(`^${name}$`, 'i') }, isActive: true }
+      ]
+    });
+    
     if (existingUniversity) {
       return res.status(400).json({ 
-        message: `University with code ${code} already exists` 
+        message: `Active university with name "${name}" or code "${code}" already exists` 
       });
     }
 
@@ -93,8 +99,11 @@ router.post('/', auth, authorize('superadmin'), async (req, res) => {
     console.error('Create university error:', error);
     
     if (error.code === 11000) {
+      // Handle duplicate key error
+      const field = Object.keys(error.keyValue)[0];
+      const value = error.keyValue[field];
       return res.status(400).json({ 
-        message: 'University code already exists' 
+        message: `University with ${field} "${value}" already exists` 
       });
     }
     

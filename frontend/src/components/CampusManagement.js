@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import api from '../utils/api';
+import GlassCard from './GlassCard';
 import '../styles/glassmorphism.css';
 
 const CampusManagement = () => {
@@ -14,6 +15,7 @@ const CampusManagement = () => {
   const [formData, setFormData] = useState({
     code: '',
     name: '',
+    university: '', // Add university field
     location: {
       address: '',
       city: '',
@@ -28,8 +30,11 @@ const CampusManagement = () => {
     establishedYear: new Date().getFullYear()
   });
 
+  const [universities, setUniversities] = useState([]); // Add universities state
+
   useEffect(() => {
     fetchCampuses();
+    fetchUniversities(); // Fetch universities on component mount
   }, []);
 
   const fetchCampuses = async () => {
@@ -44,10 +49,23 @@ const CampusManagement = () => {
     }
   };
 
+  const fetchUniversities = async () => {
+    try {
+      const response = await api.get('/api/universities?isActive=true');
+      setUniversities(response.data);
+    } catch (err) {
+      console.error('Failed to fetch universities:', err);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    // Debug logging
+    console.log('Submitting campus form data:', formData);
+    console.log('University ID:', formData.university);
 
     try {
       setLoading(true);
@@ -61,6 +79,8 @@ const CampusManagement = () => {
       resetForm();
       fetchCampuses();
     } catch (err) {
+      console.error('Campus creation error:', err);
+      console.error('Error response:', err.response?.data);
       setError(err.response?.data?.message || `Failed to ${editingId ? 'update' : 'create'} campus`);
     } finally {
       setLoading(false);
@@ -72,6 +92,7 @@ const CampusManagement = () => {
     setFormData({
       code: campus.code,
       name: campus.name,
+      university: campus.university?._id || '', // Add university field
       location: campus.location || { address: '', city: '', state: 'Odisha', pincode: '' },
       contactInfo: campus.contactInfo || { phone: '', email: '', website: '' },
       establishedYear: campus.establishedYear || new Date().getFullYear()
@@ -80,11 +101,11 @@ const CampusManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this campus?')) return;
+    if (!window.confirm('Are you sure you want to permanently delete this campus? This action cannot be undone.')) return;
 
     try {
-      await api.delete(`/api/campus/${id}`);
-      setSuccess('Campus deleted successfully!');
+      await api.delete(`/api/campus/${id}?permanent=true`);
+      setSuccess('Campus deleted permanently!');
       fetchCampuses();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete campus');
@@ -105,6 +126,7 @@ const CampusManagement = () => {
     setFormData({
       code: '',
       name: '',
+      university: '', // Reset university field
       location: { address: '', city: '', state: 'Odisha', pincode: '' },
       contactInfo: { phone: '', email: '', website: '' },
       establishedYear: new Date().getFullYear()
@@ -179,6 +201,24 @@ const CampusManagement = () => {
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>University *</label>
+              <select
+                className="glass-input"
+                value={formData.university}
+                onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                required
+                style={{ width: '100%', padding: '0.5rem' }}
+              >
+                <option value="">Select University</option>
+                {universities.map((university) => (
+                  <option key={university._id} value={university._id}>
+                    {university.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
@@ -278,71 +318,102 @@ const CampusManagement = () => {
         </motion.div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
-        {campuses.map((campus) => (
-          <motion.div
-            key={campus._id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="glass-card"
-            style={{ padding: '1.5rem' }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-              <div>
-                <h3 style={{ color: 'white', margin: 0, marginBottom: '0.25rem' }}>{campus.name}</h3>
-                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>Code: {campus.code}</div>
-              </div>
-              <div style={{
-                padding: '0.25rem 0.75rem',
-                borderRadius: '12px',
-                fontSize: '0.75rem',
-                background: campus.isActive ? 'rgba(76, 209, 55, 0.2)' : 'rgba(255, 107, 107, 0.2)',
-                color: campus.isActive ? '#4cd137' : '#ff6b6b'
-              }}>
-                {campus.isActive ? 'Active' : 'Inactive'}
-              </div>
+      <GlassCard className="p-6">
+        <h3 style={{ color: 'white', margin: '0 0 1rem 0' }}>Campuses</h3>
+        
+        {loading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          </div>
+        )}
+        
+        {!loading && campuses.length === 0 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            padding: '3rem',
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            margin: '1rem 0'
+          }}>
+            <div style={{ 
+              textAlign: 'center', 
+              color: 'rgba(255,255,255,0.7)',
+              padding: '2rem',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '8px'
+            }}>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>No campuses created yet</h3>
+              <p style={{ margin: 0 }}>Click "Add Campus" to create your first campus</p>
             </div>
-
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-              {campus.location?.city && <div>📍 {campus.location.city}, {campus.location.state}</div>}
-              {campus.contactInfo?.phone && <div>📞 {campus.contactInfo.phone}</div>}
-              {campus.contactInfo?.email && <div>📧 {campus.contactInfo.email}</div>}
-              {campus.establishedYear && <div>📅 Est. {campus.establishedYear}</div>}
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                onClick={() => handleEdit(campus)}
-                className="glass-button"
-                style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.2)' }}
+          </div>
+        )}
+        
+        {!loading && campuses.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+            {campuses.map((campus) => (
+              <motion.div
+                key={campus._id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="glass-card"
+                style={{ padding: '1.5rem' }}
               >
-                Edit
-              </button>
-              <button
-                onClick={() => handleToggleActive(campus._id, campus.isActive)}
-                className="glass-button"
-                style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(251, 197, 49, 0.2)' }}
-              >
-                {campus.isActive ? 'Deactivate' : 'Activate'}
-              </button>
-              <button
-                onClick={() => handleDelete(campus._id)}
-                className="glass-button"
-                style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255, 107, 107, 0.2)' }}
-              >
-                Delete
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                  <div>
+                    <h3 style={{ color: 'white', margin: 0, marginBottom: '0.25rem' }}>{campus.name}</h3>
+                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>Code: {campus.code}</div>
+                  </div>
+                  <div style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem',
+                    background: campus.isActive ? 'rgba(76, 209, 55, 0.2)' : 'rgba(255, 107, 107, 0.2)',
+                    color: campus.isActive ? '#4cd137' : '#ff6b6b'
+                  }}>
+                    {campus.isActive ? 'Active' : 'Inactive'}
+                  </div>
+                </div>
 
-      {!loading && campuses.length === 0 && (
-        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', padding: '3rem' }}>
-          <h3>No campuses created yet</h3>
-          <p>Click "Add Campus" to create your first campus</p>
-        </div>
-      )}
+                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                  {campus.location?.city && <div>📍 {campus.location.city}, {campus.location.state}</div>}
+                  {campus.contactInfo?.phone && <div>📞 {campus.contactInfo.phone}</div>}
+                  {campus.contactInfo?.email && <div>📧 {campus.contactInfo.email}</div>}
+                  {campus.establishedYear && <div>📅 Est. {campus.establishedYear}</div>}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => handleEdit(campus)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.2)' }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleToggleActive(campus._id, campus.isActive)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(251, 197, 49, 0.2)' }}
+                  >
+                    {campus.isActive ? 'Deactivate' : 'Activate'}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(campus._id)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255, 107, 107, 0.2)' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
+      
     </div>
   );
 };

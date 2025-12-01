@@ -18,82 +18,62 @@ const Batch = require('../models/Batch');
 // @access  SuperAdmin only
 router.get('/attendance/record', auth, authorize('superadmin'), async (req, res) => {
   try {
-    const { university, campus, school, program, course, batch, section, subject, date, timeSlot } = req.query;
+    const { batch, section, subjectId, date, slotNumber } = req.query;
 
-    // Validation
-    if (!university || !campus || !school || !program || !course || !batch || !section || !subject || !date) {
-      return res.status(400).json({ 
-        message: 'All parameters are required: university, campus, school, program, course, batch, section, subject, date' 
+    if (!batch || !section || !subjectId || !date) {
+      return res.status(400).json({
+        message: 'Required parameters: batch, section, subjectId, date'
       });
     }
 
-    // Find the timetable entry
-    const timetable = await WeeklyTimetable.findOne({
-      subject: subject,
-      section: section,
-      day: new Date(date).getDay()
-    }).populate('subject', 'name code');
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(0, 0, 0, 0);
 
-    if (!timetable) {
-      return res.status(404).json({ 
-        message: 'No timetable found for the specified parameters' 
-      });
-    }
-
-    // Get students in the batch and section
+    // Students in the batch and section
     const students = await Student.find({
-      batch: batch,
-      section: section,
-      isActive: true
+      batch,
+      section,
+      isActive: true,
+      isDeleted: false
     }).select('_id name universityId email');
 
-    // Get attendance records for this session
-    const attendanceRecords = await Attendance.find({
-      subject: subject,
-      date: new Date(date),
-      timeSlot: timeSlot || timetable.startTime
-    }).select('student status remarks');
+    // Attendance for the given subject/date[/slot]
+    const attQuery = {
+      subjectId: subjectId,
+      date: attendanceDate
+    };
+    if (slotNumber) attQuery.slotNumber = parseInt(slotNumber, 10);
 
-    // Create a map of attendance records by student
-    const attendanceMap = {};
-    attendanceRecords.forEach(record => {
-      attendanceMap[record.student.toString()] = {
-        status: record.status,
-        remarks: record.remarks
-      };
-    });
+    const attendanceRecords = await Attendance.find(attQuery)
+      .select('studentId status editHistory')
+      .populate('studentId', 'name universityId');
 
-    // Combine student data with attendance
-    const attendanceData = students.map(student => ({
+    const attendanceMap = new Map();
+    for (const rec of attendanceRecords) {
+      attendanceMap.set(rec.studentId._id.toString(), {
+        status: rec.status,
+        remarks: rec.editHistory?.length ? rec.editHistory[rec.editHistory.length - 1]?.reason : ''
+      });
+    }
+
+    const attendanceData = students.map(stu => ({
       student: {
-        _id: student._id,
-        name: student.name,
-        universityId: student.universityId,
-        email: student.email
+        _id: stu._id,
+        name: stu.name,
+        universityId: stu.universityId,
+        email: stu.email
       },
-      attendance: attendanceMap[student._id.toString()] || {
-        status: 'absent',
-        remarks: ''
-      }
+      attendance: attendanceMap.get(stu._id.toString()) || { status: 'absent', remarks: '' }
     }));
 
     res.json({
       message: 'Attendance record retrieved successfully',
-      timetable: {
-        _id: timetable._id,
-        subject: timetable.subject,
-        section: timetable.section,
-        day: timetable.day,
-        startTime: timetable.startTime,
-        endTime: timetable.endTime,
-        room: timetable.room
-      },
-      date: new Date(date),
-      timeSlot: timeSlot || timetable.startTime,
+      date: attendanceDate,
+      slotNumber: slotNumber ? parseInt(slotNumber, 10) : null,
       attendance: attendanceData,
       totalStudents: students.length,
-      presentCount: attendanceRecords.filter(record => record.status === 'present').length,
-      absentCount: attendanceRecords.filter(record => record.status === 'absent').length
+      presentCount: attendanceRecords.filter(r => r.status === 'present').length,
+      absentCount: students.length - attendanceRecords.filter(r => r.status === 'present').length
     });
   } catch (error) {
     console.error('Get attendance record error:', error);
@@ -106,56 +86,59 @@ router.get('/attendance/record', auth, authorize('superadmin'), async (req, res)
 // @access  SuperAdmin only
 router.put('/attendance/override', auth, authorize('superadmin'), async (req, res) => {
   try {
-    const { subject, date, timeSlot, studentId, newStatus, remarks, overrideReason } = req.body;
+    const { subjectId, date, slotNumber, studentId, newStatus, remarks, overrideReason } = req.body;
 
-    // Validation
-    if (!subject || !date || !studentId || !newStatus || !overrideReason) {
-      return res.status(400).json({ 
-        message: 'Subject, date, studentId, newStatus, and overrideReason are required' 
+    if (!subjectId || !date || !studentId || !newStatus || !overrideReason) {
+      return res.status(400).json({
+        message: 'subjectId, date, studentId, newStatus, and overrideReason are required'
       });
     }
 
-    // Find existing attendance record
-    const existingRecord = await Attendance.findOne({
-      subject: subject,
-      student: studentId,
-      date: new Date(date),
-      timeSlot: timeSlot
-    });
+    const attendanceDate = new Date(date);
+    attendanceDate.setHours(0, 0, 0, 0);
+
+    const findQuery = {
+      subjectId,
+      studentId,
+      date: attendanceDate
+    };
+    if (slotNumber !== undefined && slotNumber !== null) {
+      findQuery.slotNumber = slotNumber;
+    }
+
+    const existingRecord = await Attendance.findOne(findQuery);
 
     if (!existingRecord) {
-      return res.status(404).json({ 
-        message: 'Attendance record not found' 
-      });
+      return res.status(404).json({ message: 'Attendance record not found' });
     }
 
-    // Archive the original record
-    const archivedRecord = {
-      originalRecord: existingRecord._id,
-      subject: existingRecord.subject,
-      student: existingRecord.student,
-      date: existingRecord.date,
-      timeSlot: existingRecord.timeSlot,
-      status: existingRecord.status,
-      remarks: existingRecord.remarks,
-      overriddenBy: req.user._id,
-      overrideReason: overrideReason,
-      overrideDate: new Date()
-    };
-
-    // Update the attendance record
+    const previousStatus = existingRecord.status;
     existingRecord.status = newStatus;
-    existingRecord.remarks = remarks || existingRecord.remarks;
-    existingRecord.lastModifiedBy = req.user._id;
-    existingRecord.modifiedAt = new Date();
-    
+    existingRecord.markedBy = 'superadmin';
+    existingRecord.markedByUser = req.user._id;
+    existingRecord.timestamp = new Date();
+    existingRecord.updatedAt = new Date();
+    existingRecord.editHistory.push({
+      editedBy: req.user._id,
+      editedAt: new Date(),
+      previousStatus,
+      newStatus,
+      reason: overrideReason
+    });
+
+    if (remarks) {
+      // store remarks in latest edit history entry's reason concatenated
+      existingRecord.editHistory[existingRecord.editHistory.length - 1].reason = overrideReason + (remarks ? ` | ${remarks}` : '');
+    }
+
     await existingRecord.save();
 
-    res.json({
-      message: 'Attendance record overridden successfully',
-      updatedRecord: existingRecord,
-      archivedData: archivedRecord
-    });
+    const updated = await Attendance.findById(existingRecord._id)
+      .populate('studentId', 'name universityId')
+      .populate('subjectId', 'code name')
+      .populate('markedByUser', 'name role');
+
+    res.json({ message: 'Attendance record overridden successfully', updatedRecord: updated });
   } catch (error) {
     console.error('Override attendance error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });

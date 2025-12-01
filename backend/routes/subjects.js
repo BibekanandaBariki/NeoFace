@@ -13,7 +13,7 @@ const router = express.Router();
 // @access  Private
 router.get('/', auth, async (req, res) => {
   try {
-    const { department, semester, includeDeleted } = req.query;
+    const { department, semester, branch, includeDeleted } = req.query;
     const query = {};
 
     // By default, exclude deactivated subjects
@@ -21,8 +21,22 @@ router.get('/', auth, async (req, res) => {
       query.isActive = true;
     }
 
-    if (department) query.department = department;
-    if (semester) query.semester = semester;
+    // Handle branch parameter (convert to department if needed)
+    if (branch) {
+      // If branch ID is provided, use it directly
+      query.branch = branch;
+    } else if (department) {
+      // If department code is provided, keep the existing logic
+      query.department = department;
+    }
+    
+    // Handle semester parameter (ensure it's an integer)
+    if (semester) {
+      const semesterNum = parseInt(semester);
+      if (!isNaN(semesterNum)) {
+        query.semester = semesterNum;
+      }
+    }
 
     // Students can only see their subjects
     if (req.user.role === 'student') {
@@ -57,12 +71,18 @@ router.get('/', auth, async (req, res) => {
 
     // Admins see subjects they teach
     if (req.user.role === 'admin') {
-      query.faculty = req.user._id;
+      // Use the isTeacherAssigned method to find subjects where this admin is a faculty member
+      const allSubjects = await Subject.find(query);
+      const adminSubjects = allSubjects.filter(subject => 
+        subject.isTeacherAssigned(req.user._id)
+      );
+      return res.json(adminSubjects);
     }
 
     const subjects = await Subject.find(query)
-      .populate('faculty', 'name email')
+      .populate('faculty.teacher', 'name email')  // Fix: populate the teacher field within faculty
       .populate('students', 'name universityId')
+      .populate('branch', 'code name') // Add this line to populate branch
       .sort({ createdAt: -1 });
 
     res.json(subjects);
@@ -198,24 +218,66 @@ router.put('/:id', auth, authorize('admin', 'superadmin'), async (req, res) => {
     }
 
     // Check if admin owns this subject or is superadmin
-    if (req.user.role === 'admin' && subject.faculty.toString() !== req.user._id.toString()) {
+    if (req.user.role === 'admin' && !subject.isTeacherAssigned(req.user._id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const { name, timetable, students, credits } = req.body;
+    const { name, shortName, timetable, students, credits, faculty } = req.body;
 
-    const updatedSubject = await Subject.findByIdAndUpdate(
-      req.params.id,
-      {
-        ...(name && { name }),
-        ...(timetable && { timetable }),
-        ...(students && { students }),
-        ...(credits && { credits }),
-        updatedAt: new Date()
-      },
-      { new: true }
-    ).populate('faculty', 'name email')
-     .populate('students', 'name universityId');
+    // Handle faculty updates (only SuperAdmins can modify faculty)
+    if (faculty !== undefined && req.user.role === 'superadmin') {
+      // faculty can be:
+      // 1. A string (single teacher ID from frontend form)
+      // 2. An array of faculty objects (full faculty structure)
+      // 3. An array with a single object containing just the teacher ID
+      
+      if (typeof faculty === 'string') {
+        // If it's a string, it's a single teacher ID - convert to faculty array format
+        subject.faculty = [{
+          teacher: faculty,
+          role: 'primary',
+          assignedSections: ['A'], // Default section
+          isActive: true
+        }];
+      } else if (Array.isArray(faculty) && faculty.length > 0) {
+        // Check if it's an array of full faculty objects or just teacher IDs
+        if (typeof faculty[0] === 'string') {
+          // Array of teacher IDs
+          subject.faculty = faculty.map(teacherId => ({
+            teacher: teacherId,
+            role: 'primary',
+            assignedSections: ['A'],
+            isActive: true
+          }));
+        } else if (faculty[0].teacher) {
+          // Array of faculty objects with teacher property
+          subject.faculty = faculty;
+        } else {
+          // Array of objects without teacher property - might be just IDs
+          subject.faculty = faculty.map(item => ({
+            teacher: item.teacher || item._id || item,
+            role: 'primary',
+            assignedSections: ['A'],
+            isActive: true
+          }));
+        }
+      }
+    }
+
+    // Update other fields if provided
+    if (name !== undefined) subject.name = name;
+    if (shortName !== undefined) subject.shortName = shortName;
+    if (timetable !== undefined) subject.timetable = timetable;
+    if (students !== undefined) subject.students = students;
+    if (credits !== undefined) subject.credits = credits;
+
+    subject.updatedAt = new Date();
+    
+    await subject.save();
+
+    const updatedSubject = await Subject.findById(req.params.id)
+      .populate('faculty.teacher', 'name email')
+      .populate('students', 'name universityId');
 
     res.json(updatedSubject);
   } catch (error) {
@@ -280,4 +342,26 @@ router.delete('/:id', auth, authorize('superadmin'), async (req, res) => {
 });
 
 module.exports = router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

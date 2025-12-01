@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from './GlassCard';
+import api from '../utils/api';
 
 const SubjectManagement = () => {
   const [subjects, setSubjects] = useState([]);
-  const [campuses, setCampuses] = useState([]);
-  const [programs, setPrograms] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [batches, setBatches] = useState([]);
+  const [faculty, setFaculty] = useState([]); // Add faculty state
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingSubject, setEditingSubject] = useState(null);
@@ -15,10 +14,7 @@ const SubjectManagement = () => {
     code: '',
     name: '',
     shortName: '',
-    campus: '',
-    program: '',
-    branch: '',
-    batch: '',
+    branch: '', // Changed from university/school/campus/program/branch/batch to just branch
     section: '',
     semester: '',
     credits: 3,
@@ -28,158 +24,67 @@ const SubjectManagement = () => {
   });
 
   useEffect(() => {
-    fetchSubjects();
-    fetchCampuses();
-    fetchPrograms();
-    fetchBranches();
-    fetchBatches();
+    fetchData();
   }, []);
 
-  const fetchSubjects = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/subjects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSubjects(data);
-      }
+      const [subjectsRes, branchesRes, facultyRes] = await Promise.all([
+        api.get('/api/subjects'),
+        api.get('/api/branches?isActive=true'),
+        api.get('/api/users?role=admin') // Fetch faculty (admins)
+      ]);
+      setSubjects(subjectsRes.data);
+      setBranches(branchesRes.data);
+      setFaculty(facultyRes.data); // Set faculty data
     } catch (error) {
-      console.error('Error fetching subjects:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCampuses = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/campus', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCampuses(data);
-      }
-    } catch (error) {
-      console.error('Error fetching campuses:', error);
-    }
-  };
-
-  const fetchPrograms = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/programs', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setPrograms(data);
-      }
-    } catch (error) {
-      console.error('Error fetching programs:', error);
-    }
-  };
-
-  const fetchBranches = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/branches', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBranches(data);
-      }
-    } catch (error) {
-      console.error('Error fetching branches:', error);
-    }
-  };
-
-  const fetchBatches = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/batches', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBatches(data);
-      }
-    } catch (error) {
-      console.error('Error fetching batches:', error);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setLoading(true);
     try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      const url = editingSubject 
-        ? `/api/subjects/${editingSubject._id}` 
-        : '/api/subjects';
-      
-      const response = await fetch(url, {
-        method: editingSubject ? 'PUT' : 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setShowForm(false);
-        setEditingSubject(null);
-        setFormData({
-          code: '',
-          name: '',
-          shortName: '',
-          campus: '',
-          program: '',
-          branch: '',
-          batch: '',
-          section: '',
-          semester: '',
-          credits: 3,
-          type: 'core',
-          faculty: [{ teacher: '', role: 'primary', assignedSections: [''] }],
-          timetable: [{ day: 'Monday', startTime: '09:00', endTime: '10:00', room: '', section: '' }]
-        });
-        fetchSubjects();
-      } else {
-        const error = await response.json();
-        console.error('Error saving subject:', error);
-        alert(`Error: ${error.message || 'Failed to save subject'}`);
+      // Find the branch object to get the code
+      const selectedBranch = branches.find(branch => branch._id === formData.branch);
+      const branchCode = selectedBranch ? selectedBranch.code : formData.branch;
+
+      // Prepare data to match backend expectations
+      const submitData = {
+        code: formData.code,
+        name: formData.name,
+        shortName: formData.shortName,
+        department: branchCode, // Use branch code, not ID
+        semester: parseInt(formData.semester),
+        credits: parseInt(formData.credits),
+        section: formData.section || null
+      };
+
+      // Add faculty if selected
+      if (formData.faculty[0]?.teacher) {
+        submitData.faculty = formData.faculty[0].teacher;
       }
+
+      // Add timetable if exists
+      if (formData.timetable && formData.timetable.length > 0) {
+        submitData.timetable = formData.timetable;
+      }
+
+      const url = editingSubject ? `/api/subjects/${editingSubject._id}` : '/api/subjects';
+      const method = editingSubject ? 'put' : 'post';
+      await api[method](url, submitData);
+      
+      setShowForm(false);
+      setEditingSubject(null);
+      resetForm();
+      fetchData();
     } catch (error) {
       console.error('Error saving subject:', error);
-      alert('Failed to save subject');
+      alert(`Error: ${error.response?.data?.message || error.response?.data?.errors?.[0]?.msg || 'Failed to save subject'}`);
     } finally {
       setLoading(false);
     }
@@ -187,28 +92,13 @@ const SubjectManagement = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this subject?')) return;
-    
+    setLoading(true);
     try {
-      setLoading(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/subjects/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        fetchSubjects();
-      } else {
-        const error = await response.json();
-        console.error('Error deleting subject:', error);
-        alert(`Error: ${error.message || 'Failed to delete subject'}`);
-      }
+      await api.delete(`/api/subjects/${id}`);
+      fetchData();
     } catch (error) {
       console.error('Error deleting subject:', error);
-      alert('Failed to delete subject');
+      alert(`Error: ${error.response?.data?.message || 'Failed to delete subject'}`);
     } finally {
       setLoading(false);
     }
@@ -220,10 +110,7 @@ const SubjectManagement = () => {
       code: subject.code || '',
       name: subject.name || '',
       shortName: subject.shortName || '',
-      campus: subject.campus?._id || subject.campus || '',
-      program: subject.program?._id || subject.program || '',
-      branch: subject.branch?._id || subject.branch || '',
-      batch: subject.batch?._id || subject.batch || '',
+      branch: subject.branch?._id || subject.branch || '', // Changed to branch
       section: subject.section || '',
       semester: subject.semester || '',
       credits: subject.credits || 3,
@@ -232,6 +119,22 @@ const SubjectManagement = () => {
       timetable: subject.timetable || [{ day: 'Monday', startTime: '09:00', endTime: '10:00', room: '', section: '' }]
     });
     setShowForm(true);
+  };
+
+  const resetForm = () => {
+    setEditingSubject(null);
+    setFormData({
+      code: '',
+      name: '',
+      shortName: '',
+      branch: '', // Changed from university/school/campus/program/branch/batch to just branch
+      section: '',
+      semester: '',
+      credits: 3,
+      type: 'core',
+      faculty: [{ teacher: '', role: 'primary', assignedSections: [''] }],
+      timetable: [{ day: 'Monday', startTime: '09:00', endTime: '10:00', room: '', section: '' }]
+    });
   };
 
   const handleChange = (e) => {
@@ -260,26 +163,10 @@ const SubjectManagement = () => {
     }));
   };
 
-  // Filter data based on selections
-  const filteredPrograms = programs.filter(program => 
-    !formData.campus || program.campus?._id === formData.campus
-  );
-
-  const filteredBranches = branches.filter(branch => 
-    (!formData.campus || branch.campus?._id === formData.campus) &&
-    (!formData.program || branch.program?._id === formData.program)
-  );
-
-  const filteredBatches = batches.filter(batch => 
-    (!formData.campus || batch.campus?._id === formData.campus) &&
-    (!formData.program || batch.program?._id === formData.program) &&
-    (!formData.branch || batch.branch?._id === formData.branch)
-  );
-
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">Subject Management</h2>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h2 style={{ color: 'white', margin: 0 }}>Subject Management</h2>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -289,6 +176,8 @@ const SubjectManagement = () => {
               code: '',
               name: '',
               shortName: '',
+              university: '',
+              school: '',
               campus: '',
               program: '',
               branch: '',
@@ -302,103 +191,78 @@ const SubjectManagement = () => {
             });
             setShowForm(!showForm);
           }}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+          className="glass-button"
+          style={{ padding: '0.75rem 1.5rem' }}
         >
-          {showForm ? 'Cancel' : 'Add Subject'}
+          {showForm ? 'Cancel' : '+ Add Subject'}
         </motion.button>
       </div>
 
       {showForm && (
-        <GlassCard className="mb-6 p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card"
+          style={{ padding: '1.5rem', marginBottom: '2rem' }}
+        >
+          <h3 style={{ color: 'white', marginBottom: '1.5rem' }}>
             {editingSubject ? 'Edit Subject' : 'Add New Subject'}
           </h3>
           
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Code *</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Code *</label>
               <input
                 type="text"
                 name="code"
                 value={formData.code}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="SUBJ101"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Name *</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Name *</label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="Subject Name"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Short Name</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Short Name</label>
               <input
                 type="text"
                 name="shortName"
                 value={formData.shortName}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="Subj"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Campus *</label>
-              <select
-                name="campus"
-                value={formData.campus}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select Campus</option>
-                {campuses.map(campus => (
-                  <option key={campus._id} value={campus._id}>
-                    {campus.name} ({campus.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Program *</label>
-              <select
-                name="program"
-                value={formData.program}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={!formData.campus}
-              >
-                <option value="">Select Program</option>
-                {filteredPrograms.map(program => (
-                  <option key={program._id} value={program._id}>
-                    {program.name} ({program.code})
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Branch *</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Branch *</label>
               <select
                 name="branch"
                 value={formData.branch}
                 onChange={handleChange}
                 required
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={!formData.program}
+                className="glass-input"
+                style={{ width: '100%', padding: '0.5rem' }}
               >
                 <option value="">Select Branch</option>
-                {filteredBranches.map(branch => (
+                {branches.map(branch => (
                   <option key={branch._id} value={branch._id}>
                     {branch.name} ({branch.code})
                   </option>
@@ -407,52 +271,23 @@ const SubjectManagement = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Batch *</label>
-              <select
-                name="batch"
-                value={formData.batch}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                disabled={!formData.branch}
-              >
-                <option value="">Select Batch</option>
-                {filteredBatches.map(batch => (
-                  <option key={batch._id} value={batch._id}>
-                    {batch.year}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Section</label>
-              <input
-                type="text"
-                name="section"
-                value={formData.section}
-                onChange={handleChange}
-                placeholder="A, B, C, etc."
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Semester *</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Semester *</label>
               <input
                 type="number"
                 name="semester"
                 value={formData.semester}
                 onChange={handleChange}
-                min="1"
-                max="12"
                 required
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min="1"
+                max="8"
+                className="glass-input"
+                placeholder="1"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Credits</label>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Credits</label>
               <input
                 type="number"
                 name="credits"
@@ -460,126 +295,67 @@ const SubjectManagement = () => {
                 onChange={handleChange}
                 min="1"
                 max="6"
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="3"
+                style={{ width: '100%', padding: '0.5rem' }}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Type</label>
-              <select
-                name="type"
-                value={formData.type}
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Section</label>
+              <input
+                type="text"
+                name="section"
+                value={formData.section}
                 onChange={handleChange}
-                className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="glass-input"
+                placeholder="A"
+                style={{ width: '100%', padding: '0.5rem' }}
+              />
+            </div>
+            
+            <div>
+              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Faculty</label>
+              <select
+                name="faculty"
+                value={formData.faculty[0]?.teacher || ''}
+                onChange={(e) => handleFacultyChange(0, 'teacher', e.target.value)}
+                className="glass-input"
+                style={{ width: '100%', padding: '0.5rem' }}
               >
-                <option value="core">Core</option>
-                <option value="elective">Elective</option>
-                <option value="theory">Theory</option>
-                <option value="practical">Practical</option>
-                <option value="project">Project</option>
+                <option value="">Select Faculty (Optional)</option>
+                {faculty.map(facultyMember => (
+                  <option key={facultyMember._id} value={facultyMember._id}>
+                    {facultyMember.name} ({facultyMember.email})
+                  </option>
+                ))}
               </select>
             </div>
-            
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-300 mb-1">Faculty</label>
-              {formData.faculty.map((faculty, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
-                  <input
-                    type="text"
-                    placeholder="Teacher ID"
-                    value={faculty.teacher}
-                    onChange={(e) => handleFacultyChange(index, 'teacher', e.target.value)}
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <select
-                    value={faculty.role}
-                    onChange={(e) => handleFacultyChange(index, 'role', e.target.value)}
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="primary">Primary</option>
-                    <option value="secondary">Secondary</option>
-                    <option value="guest">Guest</option>
-                  </select>
-                  <input
-                    type="text"
-                    placeholder="Sections (comma separated)"
-                    value={faculty.assignedSections.join(',')}
-                    onChange={(e) => handleFacultyChange(index, 'assignedSections', e.target.value.split(','))}
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              ))}
-            </div>
-            
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-300 mb-1">Timetable</label>
-              {formData.timetable.map((slot, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-2 mb-2">
-                  <select
-                    value={slot.day}
-                    onChange={(e) => handleTimetableChange(index, 'day', e.target.value)}
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="Monday">Monday</option>
-                    <option value="Tuesday">Tuesday</option>
-                    <option value="Wednesday">Wednesday</option>
-                    <option value="Thursday">Thursday</option>
-                    <option value="Friday">Friday</option>
-                    <option value="Saturday">Saturday</option>
-                    <option value="Sunday">Sunday</option>
-                  </select>
-                  <input
-                    type="time"
-                    value={slot.startTime}
-                    onChange={(e) => handleTimetableChange(index, 'startTime', e.target.value)}
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="time"
-                    value={slot.endTime}
-                    onChange={(e) => handleTimetableChange(index, 'endTime', e.target.value)}
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Room"
-                    value={slot.room}
-                    onChange={(e) => handleTimetableChange(index, 'room', e.target.value)}
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Section"
-                    value={slot.section}
-                    onChange={(e) => handleTimetableChange(index, 'section', e.target.value)}
-                    className="px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              ))}
-            </div>
-            
-            <div className="md:col-span-2 flex justify-end gap-3">
+
+            <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
               <button
                 type="button"
                 onClick={() => setShowForm(false)}
-                className="px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
+                className="glass-button"
+                style={{ padding: '0.5rem 1rem' }}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50"
+                className="glass-button"
+                style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
               >
                 {loading ? 'Saving...' : editingSubject ? 'Update' : 'Create'}
               </button>
             </div>
           </form>
-        </GlassCard>
+        </motion.div>
       )}
 
       <GlassCard className="p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Subjects</h3>
+        <h3 style={{ color: 'white', margin: '0 0 1rem 0' }}>Subjects</h3>
         
         {loading && (
           <div className="text-center py-8">
@@ -588,66 +364,84 @@ const SubjectManagement = () => {
         )}
         
         {!loading && subjects.length === 0 && (
-          <div className="text-center py-8 text-gray-400">
-            No subjects found. Add a new subject to get started.
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            padding: '3rem',
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            margin: '1rem 0'
+          }}>
+            <div style={{ 
+              textAlign: 'center', 
+              color: 'rgba(255,255,255,0.7)',
+              padding: '2rem',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '8px'
+            }}>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>No subjects created yet</h3>
+              <p style={{ margin: 0 }}>Click "Add Subject" to create your first subject</p>
+            </div>
           </div>
         )}
         
         {!loading && subjects.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-3 px-4 text-gray-300">Code</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Name</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Branch</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Semester</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Credits</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Type</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Status</th>
-                  <th className="text-left py-3 px-4 text-gray-300">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subjects.map((subject) => (
-                  <tr key={subject._id} className="border-b border-gray-800 hover:bg-gray-800/50">
-                    <td className="py-3 px-4 text-white">{subject.code}</td>
-                    <td className="py-3 px-4 text-gray-300">{subject.name}</td>
-                    <td className="py-3 px-4 text-gray-300">
-                      {subject.branch?.name} ({subject.branch?.code})
-                    </td>
-                    <td className="py-3 px-4 text-gray-300">{subject.semester}</td>
-                    <td className="py-3 px-4 text-gray-300">{subject.credits}</td>
-                    <td className="py-3 px-4 text-gray-300 capitalize">{subject.type}</td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        subject.isActive 
-                          ? 'bg-green-900/50 text-green-400' 
-                          : 'bg-red-900/50 text-red-400'
-                      }`}>
-                        {subject.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(subject)}
-                          className="text-blue-400 hover:text-blue-300"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(subject._id)}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+            {subjects.map((subject) => (
+              <motion.div
+                key={subject._id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="glass-card"
+                style={{ padding: '1.5rem' }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                  <div>
+                    <h3 style={{ color: 'white', margin: 0, marginBottom: '0.25rem' }}>{subject.name}</h3>
+                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>
+                      Code: {subject.code}
+                    </div>
+                  </div>
+                  <div style={{
+                    padding: '0.25rem 0.75rem',
+                    borderRadius: '12px',
+                    fontSize: '0.75rem',
+                    background: subject.isActive ? 'rgba(76, 209, 55, 0.2)' : 'rgba(255, 107, 107, 0.2)',
+                    color: subject.isActive ? '#4cd137' : '#ff6b6b'
+                  }}>
+                    {subject.isActive ? 'Active' : 'Inactive'}
+                  </div>
+                </div>
+
+                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                  {subject.branch && <div>📚 {subject.branch.name} ({subject.branch.code})</div>}
+                  <div>📊 Semester: {subject.semester}</div>
+                  <div>🏅 Credits: {subject.credits}</div>
+                  <div>🏷️ Type: {subject.type?.charAt(0).toUpperCase() + subject.type?.slice(1)}</div>
+                  {subject.faculty && <div>👨‍🏫 Faculty: {subject.faculty.name}</div>}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => handleEdit(subject)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.2)' }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(subject._id)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255, 107, 107, 0.2)' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            ))}
           </div>
         )}
       </GlassCard>

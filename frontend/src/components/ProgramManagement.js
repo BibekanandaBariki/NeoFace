@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import api from '../utils/api';
+import GlassCard from './GlassCard';
 import '../styles/glassmorphism.css';
 
 const ProgramManagement = () => {
   const [programs, setPrograms] = useState([]);
-  const [campuses, setCampuses] = useState([]); // Add campuses state
+  const [universities, setUniversities] = useState([]);
+  const [campuses, setCampuses] = useState([]);
+  const [schools, setSchools] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -17,7 +20,9 @@ const ProgramManagement = () => {
     name: '',
     shortName: '',
     level: 'undergraduate',
-    campus: '', // Add campus field
+    university: '',
+    campus: '',
+    school: '',
     duration: {
       years: 4,
       semesters: 8
@@ -30,7 +35,9 @@ const ProgramManagement = () => {
 
   useEffect(() => {
     fetchPrograms();
-    fetchCampuses(); // Fetch campuses on component mount
+    fetchUniversities();
+    fetchCampuses();
+    fetchSchools();
   }, []);
 
   const fetchPrograms = async () => {
@@ -45,12 +52,30 @@ const ProgramManagement = () => {
     }
   };
 
+  const fetchUniversities = async () => {
+    try {
+      const response = await api.get('/api/universities?isActive=true');
+      setUniversities(response.data);
+    } catch (err) {
+      setError('Failed to fetch universities');
+    }
+  };
+
   const fetchCampuses = async () => {
     try {
-      const response = await api.get('/api/campus');
+      const response = await api.get('/api/campus?isActive=true');
       setCampuses(response.data);
     } catch (err) {
       setError('Failed to fetch campuses');
+    }
+  };
+
+  const fetchSchools = async () => {
+    try {
+      const response = await api.get('/api/schools?isActive=true');
+      setSchools(response.data);
+    } catch (err) {
+      setError('Failed to fetch schools');
     }
   };
 
@@ -61,16 +86,26 @@ const ProgramManagement = () => {
 
     try {
       setLoading(true);
+      console.log('📝 Submitting program data:', formData);
+
+      const dataToSend = {
+        ...formData,
+        years: formData.duration.years,
+        semesters: formData.duration.semesters,
+      };
+      delete dataToSend.duration;
+
       if (editingId) {
-        await api.put(`/api/programs/${editingId}`, formData);
+        await api.put(`/api/programs/${editingId}`, dataToSend);
         setSuccess('Program updated successfully!');
       } else {
-        await api.post('/api/programs', formData);
+        await api.post('/api/programs', dataToSend);
         setSuccess('Program created successfully!');
       }
       resetForm();
       fetchPrograms();
     } catch (err) {
+      console.error('❌ Program submission error:', err.response?.data || err.message);
       setError(err.response?.data?.message || `Failed to ${editingId ? 'update' : 'create'} program`);
     } finally {
       setLoading(false);
@@ -84,7 +119,9 @@ const ProgramManagement = () => {
       name: program.name,
       shortName: program.shortName,
       level: program.level,
-      campus: program.campus?._id || '', // Set campus ID
+      university: program.university?._id || '',
+      campus: program.campus?._id || '',
+      school: program.school?._id || '',
       duration: program.duration,
       eligibilityCriteria: program.eligibilityCriteria || '',
       description: program.description || ''
@@ -93,11 +130,11 @@ const ProgramManagement = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this program?')) return;
+    if (!window.confirm('Are you sure you want to permanently delete this program? This action cannot be undone.')) return;
 
     try {
-      await api.delete(`/api/programs/${id}`);
-      setSuccess('Program deleted successfully!');
+      await api.delete(`/api/programs/${id}?permanent=true`);
+      setSuccess('Program deleted permanently!');
       fetchPrograms();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete program');
@@ -110,7 +147,9 @@ const ProgramManagement = () => {
       name: '',
       shortName: '',
       level: 'undergraduate',
-      campus: '', // Reset campus field
+      university: '',
+      campus: '',
+      school: '',
       duration: { years: 4, semesters: 8 },
       eligibilityCriteria: '',
       description: ''
@@ -198,7 +237,22 @@ const ProgramManagement = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>University *</label>
+                <select
+                  className="glass-input"
+                  value={formData.university}
+                  onChange={(e) => setFormData({ ...formData, university: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">Select University</option>
+                  {universities.map(university => (
+                    <option key={university._id} value={university._id}>{university.name}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Campus *</label>
                 <select
@@ -209,11 +263,29 @@ const ProgramManagement = () => {
                   style={{ width: '100%', padding: '0.5rem' }}
                 >
                   <option value="">Select Campus</option>
-                  {campuses.map(campus => (
+                  {campuses.filter(campus => !formData.university || campus.university?._id === formData.university).map(campus => (
                     <option key={campus._id} value={campus._id}>{campus.name}</option>
                   ))}
                 </select>
               </div>
+              <div>
+                <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>School *</label>
+                <select
+                  className="glass-input"
+                  value={formData.school}
+                  onChange={(e) => setFormData({ ...formData, school: e.target.value })}
+                  required
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">Select School</option>
+                  {schools.filter(school => !formData.campus || school.campus?._id === formData.campus).map(school => (
+                    <option key={school._id} value={school._id}>{school.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Level *</label>
                 <select
@@ -297,84 +369,120 @@ const ProgramManagement = () => {
           </form>
         </motion.div>
       )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
-        {programs.map((program) => (
-          <motion.div
-            key={program._id}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="glass-card"
-            style={{ padding: '1.5rem' }}
-          >
-            <div style={{ marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
-                <h3 style={{ color: 'white', margin: 0 }}>{program.shortName}</h3>
-                <div style={{
-                  padding: '0.25rem 0.75rem',
-                  borderRadius: '12px',
-                  fontSize: '0.75rem',
-                  background: 'rgba(59, 130, 246, 0.2)',
-                  color: '#3b82f6'
-                }}>
-                  {program.code}
-                </div>
-              </div>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>{program.name}</div>
-              {program.campus && (
-                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
-                  🏫 {program.campus.name}
-                </div>
-              )}
+      
+      <GlassCard className="p-6">
+        <h3 style={{ color: 'white', margin: '0 0 1rem 0' }}>Programs</h3>
+        
+        {loading && (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          </div>
+        )}
+        
+        {!loading && programs.length === 0 && (
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center', 
+            padding: '3rem',
+            background: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
+            margin: '1rem 0'
+          }}>
+            <div style={{ 
+              textAlign: 'center', 
+              color: 'rgba(255,255,255,0.7)',
+              padding: '2rem',
+              background: 'rgba(0, 0, 0, 0.2)',
+              borderRadius: '8px'
+            }}>
+              <h3 style={{ margin: '0 0 0.5rem 0' }}>No programs created yet</h3>
+              <p style={{ margin: 0 }}>Click "Add Program" to create your first program</p>
             </div>
-
-            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-              <div>📊 Level: {program.level.charAt(0).toUpperCase() + program.level.slice(1)}</div>
-              <div>⏱️ Duration: {program.duration.years} years ({program.duration.semesters} semesters)</div>
-              {program.eligibilityCriteria && <div>📝 {program.eligibilityCriteria}</div>}
-            </div>
-
-            {program.description && (
-              <div style={{ 
-                color: 'rgba(255,255,255,0.6)', 
-                fontSize: '0.85rem', 
-                marginBottom: '1rem',
-                padding: '0.75rem',
-                background: 'rgba(255,255,255,0.05)',
-                borderRadius: '6px',
-                maxHeight: '60px',
-                overflow: 'auto'
-              }}>
-                {program.description}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button
-                onClick={() => handleEdit(program)}
-                className="glass-button"
-                style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.2)' }}
+          </div>
+        )}
+        
+        {!loading && programs.length > 0 && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+            {programs.map((program) => (
+              <motion.div
+                key={program._id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="glass-card"
+                style={{ padding: '1.5rem' }}
               >
-                Edit
-              </button>
-              <button
-                onClick={() => handleDelete(program._id)}
-                className="glass-button"
-                style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255, 107, 107, 0.2)' }}
-              >
-                Delete
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                    <div>
+                      <h3 style={{ color: 'white', margin: 0, marginBottom: '0.25rem' }}>{program.shortName}</h3>
+                      <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>
+                        Code: {program.code}
+                      </div>
+                    </div>
+                    <div style={{
+                      padding: '0.25rem 0.75rem',
+                      borderRadius: '12px',
+                      fontSize: '0.75rem',
+                      background: program.isActive ? 'rgba(76, 209, 55, 0.2)' : 'rgba(255, 107, 107, 0.2)',
+                      color: program.isActive ? '#4cd137' : '#ff6b6b'
+                    }}>
+                      {program.isActive ? 'Active' : 'Inactive'}
+                    </div>
+                  </div>
+                  <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>{program.name}</div>
+                  {program.campus && (
+                    <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
+                      🏫 {program.campus.name}
+                    </div>
+                  )}
+                </div>
 
-      {!loading && programs.length === 0 && (
-        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', padding: '3rem' }}>
-          <h3>No programs created yet</h3>
-          <p>Click "Add Program" to create your first academic program</p>
-        </div>
-      )}
+                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                  <div>📊 Level: {program.level.charAt(0).toUpperCase() + program.level.slice(1)}</div>
+                  <div>⏱️ Duration: {program.duration.years} years ({program.duration.semesters} semesters)</div>
+                  {program.eligibilityCriteria && <div>📝 {program.eligibilityCriteria}</div>
+}</div>
+
+                {program.description && (
+                  <div style={{ 
+                    color: 'rgba(255,255,255,0.6)', 
+                    fontSize: '0.85rem', 
+                    marginBottom: '1rem',
+                    padding: '0.75rem',
+                    background: 'rgba(255,255,255,0.05)',
+                    borderRadius: '6px',
+                    maxHeight: '60px',
+                    overflow: 'auto'
+                  }}>
+                    {program.description}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => handleEdit(program)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.2)' }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(program._id)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255, 107, 107, 0.2)' }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
+      
     </div>
   );
 };

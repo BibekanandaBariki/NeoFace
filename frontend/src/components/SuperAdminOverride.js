@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from './GlassCard';
+import api from '../utils/api';
 
 const SuperAdminOverride = () => {
   const [universities, setUniversities] = useState([]);
@@ -41,18 +42,8 @@ const SuperAdminOverride = () => {
 
   const fetchUniversities = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/universities', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUniversities(data);
-      }
+      const { data } = await api.get('/api/universities?isActive=true');
+      setUniversities(data);
     } catch (error) {
       console.error('Error fetching universities:', error);
     }
@@ -60,18 +51,8 @@ const SuperAdminOverride = () => {
 
   const fetchCampuses = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/campus', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCampuses(data);
-      }
+      const { data } = await api.get('/api/campus?isActive=true');
+      setCampuses(data);
     } catch (error) {
       console.error('Error fetching campuses:', error);
     }
@@ -79,18 +60,8 @@ const SuperAdminOverride = () => {
 
   const fetchSchools = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/schools', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSchools(data);
-      }
+      const { data } = await api.get('/api/schools?isActive=true');
+      setSchools(data);
     } catch (error) {
       console.error('Error fetching schools:', error);
     }
@@ -98,18 +69,8 @@ const SuperAdminOverride = () => {
 
   const fetchPrograms = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/programs', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setPrograms(data);
-      }
+      const { data } = await api.get('/api/programs?isActive=true');
+      setPrograms(data);
     } catch (error) {
       console.error('Error fetching programs:', error);
     }
@@ -117,18 +78,8 @@ const SuperAdminOverride = () => {
 
   const fetchCourses = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/courses', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCourses(data);
-      }
+      const { data } = await api.get('/api/courses?isActive=true');
+      setCourses(data);
     } catch (error) {
       console.error('Error fetching courses:', error);
     }
@@ -136,18 +87,8 @@ const SuperAdminOverride = () => {
 
   const fetchBatches = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/batches', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBatches(data);
-      }
+      const { data } = await api.get('/api/batches?isActive=true');
+      setBatches(data);
     } catch (error) {
       console.error('Error fetching batches:', error);
     }
@@ -155,18 +96,8 @@ const SuperAdminOverride = () => {
 
   const fetchSubjects = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/subjects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSubjects(data);
-      }
+      const { data } = await api.get('/api/subjects?isActive=true');
+      setSubjects(data);
     } catch (error) {
       console.error('Error fetching subjects:', error);
     }
@@ -191,37 +122,17 @@ const SuperAdminOverride = () => {
 
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
-      
-      const queryParams = new URLSearchParams({
-        university: filters.university,
-        campus: filters.campus,
-        school: filters.school,
-        program: filters.program,
-        course: filters.course,
+      const params = {
         batch: filters.batch,
         section: filters.section,
-        subject: filters.subject,
+        subjectId: filters.subject,
         date: filters.date
-      });
-
-      const response = await fetch(`/api/superadmin/attendance/record?${queryParams}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setAttendanceData(data);
-      } else {
-        const error = await response.json();
-        alert(`Error searching attendance: ${error.message}`);
-      }
+      };
+      const { data } = await api.get('/api/superadmin/attendance/record', { params });
+      setAttendanceData(data);
     } catch (error) {
       console.error('Error searching attendance:', error);
-      alert('Failed to search attendance');
+      alert(`Failed to search attendance: ${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
     }
@@ -235,42 +146,27 @@ const SuperAdminOverride = () => {
 
     try {
       setOverriding(true);
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch('/api/superadmin/attendance/override', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          subject: filters.subject,
-          date: filters.date,
-          timeSlot: attendanceData?.timeSlot,
-          studentId: selectedStudent.student._id,
-          newStatus: newStatus,
-          remarks: remarks,
-          overrideReason: overrideReason
-        })
+      await api.put('/api/superadmin/attendance/override', {
+        subjectId: filters.subject,
+        date: filters.date,
+        slotNumber: attendanceData?.slotNumber ?? null,
+        studentId: selectedStudent.student._id,
+        newStatus: newStatus,
+        remarks: remarks,
+        overrideReason: overrideReason
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        alert('Attendance overridden successfully!');
-        // Refresh the attendance data
-        searchAttendance();
-        // Reset form
-        setSelectedStudent(null);
-        setNewStatus('present');
-        setRemarks('');
-        setOverrideReason('');
-      } else {
-        const error = await response.json();
-        alert(`Error overriding attendance: ${error.message}`);
-      }
+      alert('Attendance overridden successfully!');
+      // Refresh the attendance data
+      searchAttendance();
+      // Reset form
+      setSelectedStudent(null);
+      setNewStatus('present');
+      setRemarks('');
+      setOverrideReason('');
     } catch (error) {
       console.error('Error overriding attendance:', error);
-      alert('Failed to override attendance');
+      alert(`Error overriding attendance: ${error.response?.data?.message || error.message}`);
     } finally {
       setOverriding(false);
     }
@@ -307,29 +203,27 @@ const SuperAdminOverride = () => {
     (!filters.course || batch.course?._id === filters.course)
   );
 
-  const filteredSubjects = subjects.filter(subject => 
-    (!filters.university || subject.university?._id === filters.university) &&
-    (!filters.campus || subject.campus?._id === filters.campus) &&
-    (!filters.school || subject.school?._id === filters.school) &&
-    (!filters.program || subject.program?._id === filters.program) &&
-    (!filters.course || subject.course?._id === filters.course)
-  );
-
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-white mb-6">SuperAdmin Attendance Override</h2>
+    <div>
+      <h2 style={{ color: 'white', margin: 0, marginBottom: '1.5rem' }}>Super Admin Override</h2>
       
-      <GlassCard className="mb-6 p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Search Attendance Record</h3>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card"
+        style={{ padding: '1.5rem', marginBottom: '2rem' }}
+      >
+        <h3 style={{ color: 'white', marginBottom: '1.5rem' }}>Attendance Override</h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">University *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>University *</label>
             <select
               name="university"
               value={filters.university}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select University</option>
               {universities.map(university => (
@@ -341,13 +235,13 @@ const SuperAdminOverride = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Campus *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Campus *</label>
             <select
               name="campus"
               value={filters.campus}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.university}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Campus</option>
               {filteredCampuses.map(campus => (
@@ -359,31 +253,31 @@ const SuperAdminOverride = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">School *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>School *</label>
             <select
               name="school"
               value={filters.school}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.campus}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select School</option>
               {filteredSchools.map(school => (
                 <option key={school._id} value={school._id}>
-                  {school.name} ({school.code})
+                  {school.name}
                 </option>
               ))}
             </select>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Program *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Program *</label>
             <select
               name="program"
               value={filters.program}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.school}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Program</option>
               {filteredPrograms.map(program => (
@@ -395,13 +289,13 @@ const SuperAdminOverride = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Course *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Course *</label>
             <select
               name="course"
               value={filters.course}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.program}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Course</option>
               {filteredCourses.map(course => (
@@ -413,46 +307,47 @@ const SuperAdminOverride = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Batch *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Batch *</label>
             <select
               name="batch"
               value={filters.batch}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.course}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Batch</option>
               {filteredBatches.map(batch => (
                 <option key={batch._id} value={batch._id}>
-                  {batch.year}
+                  {batch.year} ({batch.admissionYear}-{batch.passOutYear})
                 </option>
               ))}
             </select>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Section *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Section *</label>
             <input
               type="text"
               name="section"
               value={filters.section}
               onChange={handleFilterChange}
-              placeholder="Enter section (e.g., A, B)"
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="glass-input"
+              placeholder="A"
+              style={{ width: '100%', padding: '0.5rem' }}
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Subject *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Subject *</label>
             <select
               name="subject"
               value={filters.subject}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.course}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Subject</option>
-              {filteredSubjects.map(subject => (
+              {subjects.map(subject => (
                 <option key={subject._id} value={subject._id}>
                   {subject.name} ({subject.code})
                 </option>
@@ -461,34 +356,40 @@ const SuperAdminOverride = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Date *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Date *</label>
             <input
               type="date"
               name="date"
               value={filters.date}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             />
           </div>
           
-          <div className="flex items-end lg:col-span-2">
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={searchAttendance}
-              disabled={loading || !filters.university || !filters.campus || !filters.school || 
-                       !filters.program || !filters.course || !filters.batch || 
-                       !filters.section || !filters.subject || !filters.date}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              disabled={loading}
+              className="glass-button"
+              style={{ 
+                padding: '0.5rem 1rem', 
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                color: 'white',
+                width: '100%',
+                height: 'fit-content'
+              }}
             >
               {loading ? 'Searching...' : 'Search Attendance'}
             </motion.button>
           </div>
         </div>
-      </GlassCard>
+      </motion.div>
 
       {attendanceData && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
           {/* Attendance Summary */}
           <GlassCard className="p-6 lg:col-span-1">
             <h3 className="text-xl font-semibold text-white mb-4">Session Details</h3>

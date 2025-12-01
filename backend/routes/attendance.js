@@ -27,7 +27,8 @@ router.get('/', auth, async (req, res) => {
       if (subjectId) {
         query.subjectId = subjectId;
       } else {
-        const subjects = await Subject.find({ faculty: req.user._id });
+        // faculty is an array of objects; match on faculty.teacher
+        const subjects = await Subject.find({ 'faculty.teacher': req.user._id });
         query.subjectId = { $in: subjects.map(s => s._id) };
       }
     }
@@ -66,6 +67,19 @@ router.post('/manual', [
 
     if (!studentId || !subjectId || !date) {
       return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    // Admins can only mark attendance for their own subjects
+    if (req.user.role === 'admin') {
+      const subject = await Subject.findById(subjectId);
+      if (!subject) {
+        return res.status(404).json({ message: 'Subject not found' });
+      }
+      
+      const isAssigned = subject.isTeacherAssigned(req.user._id);
+      if (!isAssigned) {
+        return res.status(403).json({ message: 'Access denied. You are not assigned to this subject.' });
+      }
     }
 
     const attendanceDate = new Date(date);
@@ -200,12 +214,22 @@ router.get('/student/:studentId/summary', auth, async (req, res) => {
     // Check authorization
     if (req.user.role === 'student') {
       const student = await Student.findOne({ userId: req.user._id });
-      if (!student || student._id.toString() !== req.params.studentId) {
+      // Compare with the studentId parameter (which is the User ID for students)
+      if (!student || student.userId.toString() !== req.params.studentId) {
         return res.status(403).json({ message: 'Access denied' });
       }
     }
     
-    const query = { studentId: req.params.studentId };
+    // For student requests, use the actual student document ID
+    let queryStudentId = req.params.studentId;
+    if (req.user.role === 'student') {
+      const student = await Student.findOne({ userId: req.user._id });
+      if (student) {
+        queryStudentId = student._id;
+      }
+    }
+    
+    const query = { studentId: queryStudentId };
     
     if (startDate || endDate) {
       query.date = {};
@@ -278,12 +302,22 @@ router.get('/student/:studentId/day-wise', auth, async (req, res) => {
     // Check authorization
     if (req.user.role === 'student') {
       const student = await Student.findOne({ userId: req.user._id });
-      if (!student || student._id.toString() !== req.params.studentId) {
+      // Compare with the studentId parameter (which is the User ID for students)
+      if (!student || student.userId.toString() !== req.params.studentId) {
         return res.status(403).json({ message: 'Access denied' });
       }
     }
     
-    const query = { studentId: req.params.studentId };
+    // For student requests, use the actual student document ID
+    let queryStudentId = req.params.studentId;
+    if (req.user.role === 'student') {
+      const student = await Student.findOne({ userId: req.user._id });
+      if (student) {
+        queryStudentId = student._id;
+      }
+    }
+    
+    const query = { studentId: queryStudentId };
     
     if (startDate || endDate) {
       query.date = {};
@@ -342,6 +376,19 @@ router.post('/bulk-mark', auth, authorize('admin', 'superadmin'), async (req, re
     
     if (!students || !Array.isArray(students) || !subjectId || !date) {
       return res.status(400).json({ message: 'Invalid request data' });
+    }
+    
+    // Admins can only mark attendance for their own subjects
+    if (req.user.role === 'admin') {
+      const subject = await Subject.findById(subjectId);
+      if (!subject) {
+        return res.status(404).json({ message: 'Subject not found' });
+      }
+      
+      const isAssigned = subject.isTeacherAssigned(req.user._id);
+      if (!isAssigned) {
+        return res.status(403).json({ message: 'Access denied. You are not assigned to this subject.' });
+      }
     }
     
     const attendanceDate = new Date(date);

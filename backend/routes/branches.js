@@ -1,15 +1,38 @@
 const express = require('express');
 const router = express.Router();
 const Branch = require('../models/Branch');
+const mongoose = require('mongoose');
 const { auth, authorize } = require('../middleware/auth');
 
 // @route   GET /api/branches
 // @desc    Get all branches
-// @access  Private
-router.get('/', auth, async (req, res) => {
+// @access  Private (but allow students to lookup by code)
+router.get('/', async (req, res) => {
   try {
-    const { campus, program, course, university, school, isActive } = req.query;
+    const { campus, program, course, university, school, isActive, code } = req.query;
     const query = {};
+    
+    // If only code is provided and no other filters, allow students to access
+    const isCodeLookupOnly = code && !campus && !program && !course && !university && !school && isActive === undefined;
+    
+    // For code lookups, don't require authentication
+    if (!isCodeLookupOnly) {
+      // Apply auth middleware manually for other queries
+      let authPassed = false;
+      const authResult = await new Promise((resolve) => {
+        auth(req, res, () => {
+          authPassed = true;
+          resolve();
+        });
+      });
+      
+      if (!authPassed) return; // Auth failed, response already sent
+      
+      // Check authorization for non-code lookups
+      if (req.user.role !== 'superadmin' && req.user.role !== 'campusadmin') {
+        return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
+      }
+    }
     
     if (campus) query.campus = campus;
     if (program) query.program = program;
@@ -17,6 +40,7 @@ router.get('/', auth, async (req, res) => {
     if (university) query.university = university;
     if (school) query.school = school;
     if (isActive !== undefined) query.isActive = isActive === 'true';
+    if (code) query.code = code;
 
     const branches = await Branch.find(query)
       .populate('course', 'name code fullName')
@@ -109,6 +133,12 @@ router.post('/', auth, authorize('superadmin', 'campusadmin'), async (req, res) 
       });
     }
 
+    // Coerce HOD to null if empty string or not provided
+    let hodId = (typeof hod === 'string' && hod.trim() === '') ? null : hod;
+    if (hodId && !mongoose.Types.ObjectId.isValid(hodId)) {
+      return res.status(400).json({ message: 'Invalid HOD user id' });
+    }
+
     const branch = await Branch.create({
       code: code.toUpperCase(),
       name,
@@ -118,7 +148,7 @@ router.post('/', auth, authorize('superadmin', 'campusadmin'), async (req, res) 
       university,
       campus,
       school,
-      hod,
+      hod: hodId,
       description,
       intake: intake || 60,
       isActive: true,
@@ -145,6 +175,9 @@ router.post('/', auth, authorize('superadmin', 'campusadmin'), async (req, res) 
       return res.status(400).json({ 
         message: 'Branch already exists for this course, program and campus' 
       });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation failed', errors: error.errors });
     }
     
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -195,7 +228,9 @@ router.put('/:id', auth, authorize('superadmin', 'campusadmin', 'hod'), async (r
     if (university) branch.university = university;
     if (campus) branch.campus = campus;
     if (school) branch.school = school;
-    if (hod !== undefined) branch.hod = hod;
+    if (hod !== undefined) {
+      branch.hod = (typeof hod === 'string' && hod.trim() === '') ? null : hod;
+    }
     if (description !== undefined) branch.description = description;
     if (intake) branch.intake = intake;
     if (isActive !== undefined) branch.isActive = isActive;
@@ -324,6 +359,12 @@ router.get('/:id/stats', auth, async (req, res) => {
 });
 
 module.exports = router;
+
+
+
+
+
+
 
 
 

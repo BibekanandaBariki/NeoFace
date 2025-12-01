@@ -5,6 +5,7 @@ const Program = require('../models/Program');
 const School = require('../models/School');
 const Campus = require('../models/Campus');
 const University = require('../models/University');
+const mongoose = require('mongoose');
 const { auth, authorize } = require('../middleware/auth');
 
 // @route   GET /api/courses
@@ -142,6 +143,12 @@ router.post('/', auth, authorize('superadmin'), async (req, res) => {
       });
     }
 
+    // Coerce HOD to null if empty string or not provided
+    let hodId = (typeof hod === 'string' && hod.trim() === '') ? null : hod;
+    if (hodId && !mongoose.Types.ObjectId.isValid(hodId)) {
+      return res.status(400).json({ message: 'Invalid HOD user id' });
+    }
+
     const course = await Course.create({
       code: code.toUpperCase(),
       name,
@@ -150,7 +157,7 @@ router.post('/', auth, authorize('superadmin'), async (req, res) => {
       university,
       campus,
       school,
-      hod,
+      hod: hodId,
       description,
       credits: credits || 0,
       createdBy: req.user.id
@@ -175,6 +182,9 @@ router.post('/', auth, authorize('superadmin'), async (req, res) => {
       return res.status(400).json({ 
         message: 'Course code already exists' 
       });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: 'Validation failed', errors: error.errors });
     }
     
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -212,7 +222,9 @@ router.put('/:id', auth, authorize('superadmin'), async (req, res) => {
     if (university) course.university = university;
     if (campus) course.campus = campus;
     if (school) course.school = school;
-    if (hod !== undefined) course.hod = hod;
+    if (hod !== undefined) {
+      course.hod = (typeof hod === 'string' && hod.trim() === '') ? null : hod;
+    }
     if (description !== undefined) course.description = description;
     if (credits !== undefined) course.credits = credits;
     if (isActive !== undefined) course.isActive = isActive;

@@ -21,6 +21,22 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
+
+// API Response Time Monitoring Middleware
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  
+  // Override res.end to capture response time
+  const originalEnd = res.end;
+  res.end = function(chunk, encoding) {
+    const duration = Date.now() - startTime;
+    evaluationMonitor.logApiResponseTime(req.path, duration);
+    originalEnd.call(this, chunk, encoding);
+  };
+  
+  next();
+});
+
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/campus', require('./routes/campus'));
@@ -135,10 +151,19 @@ io.on('connection', (socket) => {
   });
 });
 
+
+// Periodically save evaluation metrics
+setInterval(() => {
+  evaluationMonitor.saveMetrics();
+  evaluationMonitor.printSummary();
+}, 300000); // Save every 5 minutes
+
 // Make io accessible to routes
 app.set('io', io);
 
 // Initialize SuperAdmin helper
+const evaluationMonitor = require('./evaluation_monitor');
+
 const initSuperAdmin = async () => {
   try {
     const User = require('./models/User');
@@ -148,7 +173,9 @@ const initSuperAdmin = async () => {
     const superAdminExists = await User.findOne({ email: superAdminEmail }).maxTimeMS(5000);
     
     if (!superAdminExists) {
-      const hashedPassword = await bcrypt.hash('Attitude321@11', 10);
+      // Use environment variable for SuperAdmin password, with fallback
+      const defaultPassword = process.env.SUPERADMIN_PASSWORD || 'ChangeMe123!';
+      const hashedPassword = await bcrypt.hash(defaultPassword, 10);
       await User.create({
         name: 'Bibekananda Bariki',
         email: superAdminEmail,

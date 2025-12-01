@@ -28,13 +28,18 @@ router.get('/check-eligibility', auth, authorize('campusadmin', 'superadmin'), a
     // Fetch students for the batch
     const students = await Student.find({ 
       batch: batch,
-      isActive: true
+      isActive: true,
+      isDeleted: false
     }).select('_id name universityId email');
 
-    // Fetch subjects for the course and semester
+    // Determine branch from batch and fetch subjects for that branch and semester
+    const batchDoc = await Batch.findById(batch).select('branch');
+    if (!batchDoc) {
+      return res.status(404).json({ message: 'Batch not found' });
+    }
     const subjects = await Subject.find({ 
-      course: course,
-      semester: semester,
+      branch: batchDoc.branch,
+      semester: parseInt(semester, 10),
       isActive: true
     }).select('_id code name');
 
@@ -51,8 +56,8 @@ router.get('/check-eligibility', auth, authorize('campusadmin', 'superadmin'), a
       for (const subject of subjects) {
         // Get attendance records for this student and subject
         const attendanceRecords = await Attendance.find({
-          student: student._id,
-          subject: subject._id
+          studentId: student._id,
+          subjectId: subject._id
         });
 
         const subjectTotalClasses = attendanceRecords.length;

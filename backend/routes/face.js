@@ -5,6 +5,7 @@ const Student = require('../models/Student');
 const Attendance = require('../models/Attendance');
 const Subject = require('../models/Subject');
 const faceService = require('../services/faceRecognition');
+const faceServiceWithMonitoring = require('../services/faceRecognitionWithMonitoring');
 
 const router = express.Router();
 
@@ -28,9 +29,9 @@ router.post('/register', auth, authorize('student'), async (req, res) => {
       return res.status(400).json({ message: 'Please provide frames or imageData for face registration.' });
     }
 
-    const embedding = await faceService.generateEmbedding(framesToProcess[0], framesToProcess);
+    const embedding = await faceServiceWithMonitoring.generateEmbedding(framesToProcess[0], framesToProcess);
     if (!embedding) {
-      return res.status(500).json({ message: 'Failed to generate face embedding. Ensure image quality and face visibility.' });
+      return res.status(503).json({ message: 'Face service unavailable or failed to generate embedding. Please try again later or ensure face is clearly visible.' });
     }
 
     // Persist to User and Student records
@@ -88,10 +89,10 @@ router.post('/recognize', auth, async (req, res) => {
     }
 
     // Use service to recognize
-    const result = await faceService.recognizeFace(imageData, candidates);
+    const result = await faceServiceWithMonitoring.recognizeFace(imageData, candidates);
     if (!result) {
       console.log('Face not recognized or confidence too low');
-      return res.status(404).json({ message: 'Face not recognized. Please try again or ensure you are registered and approved.' });
+      return res.status(404).json({ message: 'Face not recognized or face service unavailable. Please try again later or ensure you are registered and approved.' });
     }
 
     const matchedStudent = result.student;
@@ -194,7 +195,7 @@ router.put('/update/:studentId', auth, authorize('superadmin'), async (req, res)
     }
 
     // Generate new embedding
-    const embedding = await faceService.generateEmbedding(imageData, frames);
+    const embedding = await faceServiceWithMonitoring.generateEmbedding(imageData, frames);
 
     if (!embedding) {
       return res.status(400).json({ message: 'Face detection failed. Please ensure face is clearly visible.' });

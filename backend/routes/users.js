@@ -16,7 +16,7 @@ router.post('/', [
   body('name').notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-  body('role').isIn(['admin', 'student']).withMessage('Invalid role')
+  body('role').isIn(['admin', 'student', 'campusadmin', 'hod']).withMessage('Invalid role')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -96,7 +96,14 @@ router.get('/', auth, authorize('superadmin'), async (req, res) => {
     const { role, isActive, includeDeleted } = req.query;
     const query = {};
 
-    if (role) query.role = role;
+    if (role) {
+      // Handle comma-separated roles
+      if (role.includes(',')) {
+        query.role = { $in: role.split(',') };
+      } else {
+        query.role = role;
+      }
+    }
     if (isActive !== undefined) query.isActive = isActive === 'true';
     
     // By default, exclude deleted users
@@ -584,3 +591,7 @@ router.get('/stats/summary', auth, authorize('superadmin'), async (req, res) => 
 });
 
 module.exports = router;
+
+
+
+

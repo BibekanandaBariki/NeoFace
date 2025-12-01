@@ -24,7 +24,7 @@ router.get('/overview', auth, async (req, res) => {
       query.studentId = student._id;
       students = [student];
     } else if (req.user.role === 'admin') {
-      const subjects = await Subject.find({ faculty: req.user._id });
+      const subjects = await Subject.find({ 'faculty.teacher': req.user._id });
       if (subjectId) {
         query.subjectId = subjectId;
       } else {

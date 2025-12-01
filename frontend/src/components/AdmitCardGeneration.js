@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import GlassCard from './GlassCard';
+import api from '../utils/api';
 
 const AdmitCardGeneration = () => {
   const [universities, setUniversities] = useState([]);
@@ -12,7 +13,6 @@ const AdmitCardGeneration = () => {
   const [semesters, setSemesters] = useState([]);
   const [eligibleStudents, setEligibleStudents] = useState([]);
   const [ineligibleStudents, setIneligibleStudents] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [checkingEligibility, setCheckingEligibility] = useState(false);
   const [generatingCards, setGeneratingCards] = useState(false);
   const [filters, setFilters] = useState({
@@ -38,18 +38,8 @@ const AdmitCardGeneration = () => {
 
   const fetchUniversities = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/universities', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setUniversities(data);
-      }
+      const { data } = await api.get('/api/universities?isActive=true');
+      setUniversities(data);
     } catch (error) {
       console.error('Error fetching universities:', error);
     }
@@ -57,18 +47,8 @@ const AdmitCardGeneration = () => {
 
   const fetchCampuses = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/campus', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCampuses(data);
-      }
+      const { data } = await api.get('/api/campus?isActive=true');
+      setCampuses(data);
     } catch (error) {
       console.error('Error fetching campuses:', error);
     }
@@ -76,18 +56,8 @@ const AdmitCardGeneration = () => {
 
   const fetchSchools = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/schools', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setSchools(data);
-      }
+      const { data } = await api.get('/api/schools?isActive=true');
+      setSchools(data);
     } catch (error) {
       console.error('Error fetching schools:', error);
     }
@@ -95,18 +65,8 @@ const AdmitCardGeneration = () => {
 
   const fetchPrograms = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/programs', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setPrograms(data);
-      }
+      const { data } = await api.get('/api/programs?isActive=true');
+      setPrograms(data);
     } catch (error) {
       console.error('Error fetching programs:', error);
     }
@@ -114,18 +74,8 @@ const AdmitCardGeneration = () => {
 
   const fetchCourses = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/courses', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setCourses(data);
-      }
+      const { data } = await api.get('/api/courses?isActive=true');
+      setCourses(data);
     } catch (error) {
       console.error('Error fetching courses:', error);
     }
@@ -133,18 +83,8 @@ const AdmitCardGeneration = () => {
 
   const fetchBatches = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/batches', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setBatches(data);
-      }
+      const { data } = await api.get('/api/batches?isActive=true');
+      setBatches(data);
     } catch (error) {
       console.error('Error fetching batches:', error);
     }
@@ -168,9 +108,7 @@ const AdmitCardGeneration = () => {
 
     try {
       setCheckingEligibility(true);
-      const token = localStorage.getItem('token');
-      
-      const queryParams = new URLSearchParams({
+      const params = {
         university: filters.university,
         campus: filters.campus,
         school: filters.school,
@@ -178,26 +116,13 @@ const AdmitCardGeneration = () => {
         course: filters.course,
         batch: filters.batch,
         semester: filters.semester
-      });
-
-      const response = await fetch(`/api/examination/check-eligibility?${queryParams}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setEligibleStudents(data.eligibleStudents || []);
-        setIneligibleStudents(data.ineligibleStudents || []);
-      } else {
-        const error = await response.json();
-        alert(`Error checking eligibility: ${error.message}`);
-      }
+      };
+      const { data } = await api.get('/api/examination/check-eligibility', { params });
+      setEligibleStudents(data.eligibleStudents || []);
+      setIneligibleStudents(data.ineligibleStudents || []);
     } catch (error) {
       console.error('Error checking eligibility:', error);
-      alert('Failed to check eligibility');
+      alert(`Failed to check eligibility: ${error.response?.data?.message || error.message}`);
     } finally {
       setCheckingEligibility(false);
     }
@@ -211,37 +136,21 @@ const AdmitCardGeneration = () => {
 
     try {
       setGeneratingCards(true);
-      const token = localStorage.getItem('token');
-      
-      const response = await fetch('/api/examination/generate-admit-cards', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          studentIds: eligibleStudents.map(student => student._id),
-          filters: filters
-        })
+      const { data } = await api.post('/api/examination/generate-admit-cards', {
+        studentIds: eligibleStudents.map(student => student._id),
+        filters
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        // Trigger download
-        const link = document.createElement('a');
-        link.href = data.downloadUrl;
-        link.download = 'admit-cards.zip';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        alert('Admit cards generated and downloaded successfully!');
-      } else {
-        const error = await response.json();
-        alert(`Error generating admit cards: ${error.message}`);
-      }
+      // Trigger download (placeholder URL)
+      const link = document.createElement('a');
+      link.href = data.downloadUrl;
+      link.download = 'admit-cards.zip';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      alert('Admit cards generated and downloaded successfully!');
     } catch (error) {
       console.error('Error generating admit cards:', error);
-      alert('Failed to generate admit cards');
+      alert(`Error generating admit cards: ${error.response?.data?.message || error.message}`);
     } finally {
       setGeneratingCards(false);
     }
@@ -279,20 +188,26 @@ const AdmitCardGeneration = () => {
   );
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-white mb-6">Admit Card Generation</h2>
+    <div>
+      <h2 style={{ color: 'white', margin: 0, marginBottom: '1.5rem' }}>Admit Card Generation</h2>
       
-      <GlassCard className="mb-6 p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">Eligibility Check</h3>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card"
+        style={{ padding: '1.5rem', marginBottom: '2rem' }}
+      >
+        <h3 style={{ color: 'white', marginBottom: '1.5rem' }}>Eligibility Check</h3>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">University *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>University *</label>
             <select
               name="university"
               value={filters.university}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select University</option>
               {universities.map(university => (
@@ -304,13 +219,13 @@ const AdmitCardGeneration = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Campus *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Campus *</label>
             <select
               name="campus"
               value={filters.campus}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.university}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Campus</option>
               {filteredCampuses.map(campus => (
@@ -322,31 +237,31 @@ const AdmitCardGeneration = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">School *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>School *</label>
             <select
               name="school"
               value={filters.school}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.campus}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select School</option>
               {filteredSchools.map(school => (
                 <option key={school._id} value={school._id}>
-                  {school.name} ({school.code})
+                  {school.name}
                 </option>
               ))}
             </select>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Program *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Program *</label>
             <select
               name="program"
               value={filters.program}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.school}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Program</option>
               {filteredPrograms.map(program => (
@@ -358,13 +273,13 @@ const AdmitCardGeneration = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Course *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Course *</label>
             <select
               name="course"
               value={filters.course}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.program}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Course</option>
               {filteredCourses.map(course => (
@@ -376,54 +291,61 @@ const AdmitCardGeneration = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Batch *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Batch *</label>
             <select
               name="batch"
               value={filters.batch}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={!filters.course}
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Batch</option>
               {filteredBatches.map(batch => (
                 <option key={batch._id} value={batch._id}>
-                  {batch.year}
+                  {batch.year} ({batch.admissionYear}-{batch.passOutYear})
                 </option>
               ))}
             </select>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Semester *</label>
+            <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Semester *</label>
             <select
               name="semester"
               value={filters.semester}
               onChange={handleFilterChange}
-              className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="glass-input"
+              style={{ width: '100%', padding: '0.5rem' }}
             >
               <option value="">Select Semester</option>
               {semesters.map(semester => (
                 <option key={semester} value={semester}>
-                  Semester {semester}
+                  {semester}
                 </option>
               ))}
             </select>
           </div>
           
-          <div className="flex items-end">
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={checkEligibility}
-              disabled={checkingEligibility || !filters.university || !filters.campus || !filters.school || 
-                       !filters.program || !filters.course || !filters.batch || !filters.semester}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+              disabled={checkingEligibility}
+              className="glass-button"
+              style={{ 
+                padding: '0.5rem 1rem', 
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                color: 'white',
+                width: '100%',
+                height: 'fit-content'
+              }}
             >
               {checkingEligibility ? 'Checking...' : 'Check Eligibility'}
             </motion.button>
           </div>
         </div>
-      </GlassCard>
+      </motion.div>
 
       {(eligibleStudents.length > 0 || ineligibleStudents.length > 0) && (
         <>
@@ -448,8 +370,27 @@ const AdmitCardGeneration = () => {
               </div>
               
               {eligibleStudents.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  No eligible students found
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  padding: '3rem',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  margin: '1rem 0'
+                }}>
+                  <div style={{ 
+                    textAlign: 'center', 
+                    color: 'rgba(255,255,255,0.7)',
+                    padding: '2rem',
+                    background: 'rgba(0, 0, 0, 0.2)',
+                    borderRadius: '8px'
+                  }}>
+                    <h3 style={{ margin: '0 0 0.5rem 0' }}>No eligible students found</h3>
+                    <p style={{ margin: 0 }}>No students meet the eligibility criteria</p>
+                  </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -484,8 +425,27 @@ const AdmitCardGeneration = () => {
               </h3>
               
               {ineligibleStudents.length === 0 ? (
-                <div className="text-center py-8 text-gray-400">
-                  No ineligible students found
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  padding: '3rem',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  backdropFilter: 'blur(10px)',
+                  margin: '1rem 0'
+                }}>
+                  <div style={{ 
+                    textAlign: 'center', 
+                    color: 'rgba(255,255,255,0.7)',
+                    padding: '2rem',
+                    background: 'rgba(0, 0, 0, 0.2)',
+                    borderRadius: '8px'
+                  }}>
+                    <h3 style={{ margin: '0 0 0.5rem 0' }}>No ineligible students found</h3>
+                    <p style={{ margin: 0 }}>All students meet the eligibility criteria</p>
+                  </div>
                 </div>
               ) : (
                 <div className="overflow-x-auto">

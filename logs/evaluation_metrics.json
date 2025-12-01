@@ -1,0 +1,380 @@
+{
+  "timestamp": "2025-12-01T20:02:04.382Z",
+  "uptime": 600019,
+  "metrics": {
+    "recognition_times": [],
+    "api_response_times": [
+      {
+        "endpoint": "/generate",
+        "time": 22,
+        "timestamp": "2025-12-01T19:52:09.659Z"
+      },
+      {
+        "endpoint": "/login",
+        "time": 116,
+        "timestamp": "2025-12-01T19:52:28.456Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 17,
+        "timestamp": "2025-12-01T19:52:28.503Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 20,
+        "timestamp": "2025-12-01T19:52:28.504Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 17,
+        "timestamp": "2025-12-01T19:52:28.504Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 21,
+        "timestamp": "2025-12-01T19:52:28.508Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 21,
+        "timestamp": "2025-12-01T19:52:28.510Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 25,
+        "timestamp": "2025-12-01T19:52:28.514Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 11,
+        "timestamp": "2025-12-01T19:52:28.521Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 14,
+        "timestamp": "2025-12-01T19:52:28.526Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 14,
+        "timestamp": "2025-12-01T19:52:28.526Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 15,
+        "timestamp": "2025-12-01T19:52:28.529Z"
+      },
+      {
+        "endpoint": "/me",
+        "time": 2,
+        "timestamp": "2025-12-01T19:52:28.531Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 13,
+        "timestamp": "2025-12-01T19:52:28.532Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 20,
+        "timestamp": "2025-12-01T19:52:28.533Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 21,
+        "timestamp": "2025-12-01T19:52:37.683Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 18,
+        "timestamp": "2025-12-01T19:52:37.684Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 21,
+        "timestamp": "2025-12-01T19:52:37.689Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 5,
+        "timestamp": "2025-12-01T19:52:37.709Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 8,
+        "timestamp": "2025-12-01T19:52:39.407Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 8,
+        "timestamp": "2025-12-01T19:52:39.408Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 8,
+        "timestamp": "2025-12-01T19:52:42.340Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 6,
+        "timestamp": "2025-12-01T19:52:43.471Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 12,
+        "timestamp": "2025-12-01T19:52:44.561Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 11,
+        "timestamp": "2025-12-01T19:52:45.696Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 13,
+        "timestamp": "2025-12-01T19:52:47.059Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 12,
+        "timestamp": "2025-12-01T19:52:49.097Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 16,
+        "timestamp": "2025-12-01T19:52:49.099Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 14,
+        "timestamp": "2025-12-01T19:52:56.516Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 21,
+        "timestamp": "2025-12-01T19:52:58.513Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 23,
+        "timestamp": "2025-12-01T19:52:58.517Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 27,
+        "timestamp": "2025-12-01T19:52:58.524Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 28,
+        "timestamp": "2025-12-01T19:52:58.527Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 27,
+        "timestamp": "2025-12-01T19:52:58.531Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 30,
+        "timestamp": "2025-12-01T19:52:58.536Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 10,
+        "timestamp": "2025-12-01T19:52:58.539Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 15,
+        "timestamp": "2025-12-01T19:52:58.539Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 15,
+        "timestamp": "2025-12-01T19:53:28.508Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 29,
+        "timestamp": "2025-12-01T19:53:28.519Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 28,
+        "timestamp": "2025-12-01T19:53:28.523Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 27,
+        "timestamp": "2025-12-01T19:53:28.525Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 31,
+        "timestamp": "2025-12-01T19:53:28.525Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 28,
+        "timestamp": "2025-12-01T19:53:28.528Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 6,
+        "timestamp": "2025-12-01T19:53:28.532Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 14,
+        "timestamp": "2025-12-01T19:53:28.533Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 17,
+        "timestamp": "2025-12-01T19:53:58.511Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 20,
+        "timestamp": "2025-12-01T19:53:58.515Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 21,
+        "timestamp": "2025-12-01T19:53:58.520Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 22,
+        "timestamp": "2025-12-01T19:53:58.522Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 22,
+        "timestamp": "2025-12-01T19:53:58.526Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 25,
+        "timestamp": "2025-12-01T19:53:58.529Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 7,
+        "timestamp": "2025-12-01T19:53:58.531Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 11,
+        "timestamp": "2025-12-01T19:53:58.531Z"
+      },
+      {
+        "endpoint": "/generate",
+        "time": 9,
+        "timestamp": "2025-12-01T19:54:17.046Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 13,
+        "timestamp": "2025-12-01T19:54:28.516Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 25,
+        "timestamp": "2025-12-01T19:54:28.526Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 25,
+        "timestamp": "2025-12-01T19:54:28.530Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 26,
+        "timestamp": "2025-12-01T19:54:28.531Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 28,
+        "timestamp": "2025-12-01T19:54:28.532Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 26,
+        "timestamp": "2025-12-01T19:54:28.534Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 11,
+        "timestamp": "2025-12-01T19:54:28.537Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 7,
+        "timestamp": "2025-12-01T19:54:28.539Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 17,
+        "timestamp": "2025-12-01T19:54:58.520Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 23,
+        "timestamp": "2025-12-01T19:54:58.521Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 19,
+        "timestamp": "2025-12-01T19:54:58.524Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 20,
+        "timestamp": "2025-12-01T19:54:58.524Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 22,
+        "timestamp": "2025-12-01T19:54:58.528Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 13,
+        "timestamp": "2025-12-01T19:54:58.529Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 5,
+        "timestamp": "2025-12-01T19:54:58.530Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 6,
+        "timestamp": "2025-12-01T19:54:58.531Z"
+      }
+    ],
+    "embedding_generation_times": [],
+    "recognition_confidence_scores": [],
+    "successful_recognitions": 0,
+    "total_recognitions": 0,
+    "errors": []
+  },
+  "statistics": {
+    "errors": {
+      "count": 0,
+      "types": {}
+    }
+  },
+  "confusion_matrix": {
+    "true_positives": 0,
+    "false_negatives": 0,
+    "total_attempts": 0
+  },
+  "prf1_metrics": {
+    "precision": 0,
+    "recall": 0,
+    "f1_score": 0
+  }
+}

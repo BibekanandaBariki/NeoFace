@@ -33,7 +33,7 @@ router.get('/', auth, async (req, res) => {
     // Admins see students in their subjects
     if (req.user.role === 'admin') {
       const Subject = require('../models/Subject');
-      const subjects = await Subject.find({ faculty: req.user._id });
+      const subjects = await Subject.find({ 'faculty.teacher': req.user._id });
       const studentIds = subjects.reduce((acc, subject) => {
         return acc.concat(subject.students.map(s => s.toString()));
       }, []);
@@ -402,7 +402,7 @@ router.put('/:id', [
     // Check permissions - Admin can only update students in their subjects
     if (req.user.role === 'admin') {
       const Subject = require('../models/Subject');
-      const adminSubjects = await Subject.find({ faculty: req.user._id });
+      const adminSubjects = await Subject.find({ 'faculty.teacher': req.user._id });
       const adminStudentIds = adminSubjects.reduce((acc, subj) => {
         return acc.concat(subj.students.map(s => s.toString()));
       }, []);
