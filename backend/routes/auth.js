@@ -273,8 +273,12 @@ router.get('/reset-superadmin-emergency', async (req, res) => {
       return res.status(404).json({ message: 'SuperAdmin user not found' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
+    // const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // user.password = hashedPassword;
+
+    // FIX: User model already has a pre-save hook that hashes the password.
+    // Setting it as plain text here ensures it's hashed exactly ONCE by the model.
+    user.password = newPassword;
     await user.save();
 
     console.log(`✅ EMERGENCY: SuperAdmin password reset to: ${newPassword}`);

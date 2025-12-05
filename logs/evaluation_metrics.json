@@ -1,6 +1,6 @@
 {
-  "timestamp": "2025-12-05T19:40:04.823Z",
-  "uptime": 11700044,
+  "timestamp": "2025-12-05T19:50:04.824Z",
+  "uptime": 12300028,
   "metrics": {
     "recognition_times": [
       5085,
@@ -49703,6 +49703,56 @@
         "endpoint": "/api/api/branches",
         "time": 1,
         "timestamp": "2025-12-05T19:28:48.232Z"
+      },
+      {
+        "endpoint": "/login",
+        "time": 125,
+        "timestamp": "2025-12-05T19:42:17.230Z"
+      },
+      {
+        "endpoint": "/me",
+        "time": 29,
+        "timestamp": "2025-12-05T19:42:17.380Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 18,
+        "timestamp": "2025-12-05T19:42:17.402Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 8,
+        "timestamp": "2025-12-05T19:42:17.413Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 3,
+        "timestamp": "2025-12-05T19:42:17.420Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 4,
+        "timestamp": "2025-12-05T19:42:17.427Z"
+      },
+      {
+        "endpoint": "/section/690f3879186acdfc21512224/A/690f4eed4a9bcca80ccc9eb7",
+        "time": 5,
+        "timestamp": "2025-12-05T19:42:17.434Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 8,
+        "timestamp": "2025-12-05T19:42:17.445Z"
+      },
+      {
+        "endpoint": "/login",
+        "time": 4,
+        "timestamp": "2025-12-05T19:42:26.933Z"
+      },
+      {
+        "endpoint": "/login",
+        "time": 41,
+        "timestamp": "2025-12-05T19:47:11.554Z"
       }
     ],
     "embedding_generation_times": [],
