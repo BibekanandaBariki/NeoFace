@@ -35,7 +35,7 @@ router.post('/register', [
     if (existingUser && !existingUser.isDeleted) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
-    
+
     // If user was deleted, allow re-registration with new data
     if (existingUser && existingUser.isDeleted) {
       // Permanently delete the old record before creating new one
@@ -83,7 +83,7 @@ router.post('/login', [
     console.log('\n=== LOGIN REQUEST ===');
     console.log('Email:', req.body.email);
     console.log('Password length:', req.body.password?.length);
-    
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       console.log('❌ Validation errors:', errors.array());
@@ -95,29 +95,29 @@ router.post('/login', [
     // Find user - check if deleted is explicitly true (not just missing field)
     const user = await User.findOne({ email });
     console.log('User found:', user ? `${user.email} (${user.role})` : 'NOT FOUND');
-    
+
     if (!user) {
       console.log('❌ User not found in database');
-      return res.status(401).json({ 
-        message: 'Invalid credentials. Please check your email and password.' 
+      return res.status(401).json({
+        message: 'Invalid credentials. Please check your email and password.'
       });
     }
-    
+
     console.log('User isDeleted:', user.isDeleted);
     console.log('User isActive:', user.isActive);
-    
+
     // Check if user is explicitly deleted
     if (user.isDeleted === true) {
       console.log('❌ User is marked as deleted');
-      return res.status(401).json({ 
-        message: 'Account has been deleted. Please contact the administrator for re-registration.' 
+      return res.status(401).json({
+        message: 'Account has been deleted. Please contact the administrator for re-registration.'
       });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     console.log('Password match:', isMatch ? '✅ YES' : '❌ NO');
-    
+
     if (!isMatch) {
       console.log('❌ Password does not match');
       return res.status(401).json({ message: 'Invalid credentials. Please check your email and password.' });
@@ -158,21 +158,21 @@ router.post('/login', [
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
-    
+
     // For students, also check registration status from Student model
     if (user.role === 'student') {
       const Student = require('../models/Student');
       const student = await Student.findOne({ userId: req.user._id });
-      
+
       if (student) {
         // Copy student-specific information to user object
         user.department = student.department || user.department;
         user.section = student.section;
         user.semester = student.semester;
-        
+
         // Check if face is actually registered (has embedding)
         const hasFaceEmbedding = student.faceEmbedding && student.faceEmbedding.length > 0;
-        
+
         if (hasFaceEmbedding) {
           // Face embedding exists - check approval status
           if (student.registrationStatus === 'approved') {
@@ -217,19 +217,19 @@ router.get('/me', auth, async (req, res) => {
     if (!responseUser.hasOwnProperty('registrationStatus')) {
       responseUser.registrationStatus = user.registrationStatus || null;
     }
-    
+
     // Ensure consistent ID field (use 'id' like in login response)
     if (responseUser._id && !responseUser.id) {
       responseUser.id = responseUser._id;
     }
-    
+
     console.log('API /auth/me response for student:', {
       userId: responseUser.id || responseUser._id,
       role: responseUser.role,
       faceRegistered: responseUser.faceRegistered,
       registrationStatus: responseUser.registrationStatus
     });
-    
+
     res.json(responseUser);
   } catch (error) {
     console.error('Get user error:', error);
@@ -255,6 +255,33 @@ router.post('/verify-token', auth, async (req, res) => {
     });
   } catch (error) {
     res.status(401).json({ valid: false, message: 'Invalid token' });
+  }
+});
+
+// @route   GET /api/auth/reset-superadmin-emergency
+// @desc    Emergency password reset for SuperAdmin (Temporary)
+// @access  Public (to allow recovery)
+router.get('/reset-superadmin-emergency', async (req, res) => {
+  try {
+    const email = 'bibekbariki786@gmail.com';
+    const newPassword = 'Attitude321@11';
+    const bcrypt = require('bcryptjs');
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'SuperAdmin user not found' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    console.log(`✅ EMERGENCY: SuperAdmin password reset to: ${newPassword}`);
+    res.json({ message: `Success! Password reset to: ${newPassword}` });
+  } catch (error) {
+    console.error('Reset error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
