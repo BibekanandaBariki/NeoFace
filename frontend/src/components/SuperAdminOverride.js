@@ -18,6 +18,9 @@ const SuperAdminOverride = () => {
   const [overrideReason, setOverrideReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [overriding, setOverriding] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [attendanceRecord, setAttendanceRecord] = useState(null);
   const [filters, setFilters] = useState({
     university: '',
     campus: '',
@@ -42,7 +45,7 @@ const SuperAdminOverride = () => {
 
   const fetchUniversities = async () => {
     try {
-      const { data } = await api.get('/api/universities?isActive=true');
+      const { data } = await api.get('/universities?isActive=true');
       setUniversities(data);
     } catch (error) {
       console.error('Error fetching universities:', error);
@@ -51,7 +54,7 @@ const SuperAdminOverride = () => {
 
   const fetchCampuses = async () => {
     try {
-      const { data } = await api.get('/api/campus?isActive=true');
+      const { data } = await api.get('/campus?isActive=true');
       setCampuses(data);
     } catch (error) {
       console.error('Error fetching campuses:', error);
@@ -60,7 +63,7 @@ const SuperAdminOverride = () => {
 
   const fetchSchools = async () => {
     try {
-      const { data } = await api.get('/api/schools?isActive=true');
+      const { data } = await api.get('/schools?isActive=true');
       setSchools(data);
     } catch (error) {
       console.error('Error fetching schools:', error);
@@ -69,7 +72,7 @@ const SuperAdminOverride = () => {
 
   const fetchPrograms = async () => {
     try {
-      const { data } = await api.get('/api/programs?isActive=true');
+      const { data } = await api.get('/programs?isActive=true');
       setPrograms(data);
     } catch (error) {
       console.error('Error fetching programs:', error);
@@ -78,7 +81,7 @@ const SuperAdminOverride = () => {
 
   const fetchCourses = async () => {
     try {
-      const { data } = await api.get('/api/courses?isActive=true');
+      const { data } = await api.get('/courses?isActive=true');
       setCourses(data);
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -87,7 +90,7 @@ const SuperAdminOverride = () => {
 
   const fetchBatches = async () => {
     try {
-      const { data } = await api.get('/api/batches?isActive=true');
+      const { data } = await api.get('/batches?isActive=true');
       setBatches(data);
     } catch (error) {
       console.error('Error fetching batches:', error);
@@ -96,10 +99,61 @@ const SuperAdminOverride = () => {
 
   const fetchSubjects = async () => {
     try {
-      const { data } = await api.get('/api/subjects?isActive=true');
+      const { data } = await api.get('/subjects?isActive=true');
       setSubjects(data);
     } catch (error) {
       console.error('Error fetching subjects:', error);
+    }
+  };
+
+  const fetchAttendanceRecord = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        university: filters.university,
+        campus: filters.campus,
+        school: filters.school,
+        program: filters.program,
+        course: filters.course,
+        batch: filters.batch,
+        subject: filters.subject,
+        date: filters.date
+      };
+      
+      const { data } = await api.get('/superadmin/attendance/record', { params });
+      setAttendanceRecord(data);
+    } catch (error) {
+      console.error('Error fetching attendance record:', error);
+      setError('Failed to fetch attendance record');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOverrideAttendance = async () => {
+    if (!selectedStudent || !overrideReason) {
+      setError('Please select a student and provide a reason for override');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await api.put('/superadmin/attendance/override', {
+        attendanceId: selectedStudent.attendanceId,
+        studentId: selectedStudent.studentId,
+        status: selectedStudent.newStatus,
+        reason: overrideReason
+      });
+      
+      setSuccess('Attendance override successful!');
+      setOverrideReason('');
+      setSelectedStudent(null);
+      fetchAttendanceRecord();
+    } catch (error) {
+      console.error('Error overriding attendance:', error);
+      setError('Failed to override attendance');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -128,7 +182,7 @@ const SuperAdminOverride = () => {
         subjectId: filters.subject,
         date: filters.date
       };
-      const { data } = await api.get('/api/superadmin/attendance/record', { params });
+      const { data } = await api.get('/superadmin/attendance/record', { params });
       setAttendanceData(data);
     } catch (error) {
       console.error('Error searching attendance:', error);
@@ -146,7 +200,7 @@ const SuperAdminOverride = () => {
 
     try {
       setOverriding(true);
-      await api.put('/api/superadmin/attendance/override', {
+      await api.put('/superadmin/attendance/override', {
         subjectId: filters.subject,
         date: filters.date,
         slotNumber: attendanceData?.slotNumber ?? null,

@@ -43,7 +43,7 @@ const ProgramManagement = () => {
   const fetchPrograms = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/programs');
+      const response = await api.get('/programs');
       setPrograms(response.data);
     } catch (err) {
       setError('Failed to fetch programs');
@@ -54,7 +54,7 @@ const ProgramManagement = () => {
 
   const fetchUniversities = async () => {
     try {
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
     } catch (err) {
       setError('Failed to fetch universities');
@@ -63,7 +63,7 @@ const ProgramManagement = () => {
 
   const fetchCampuses = async () => {
     try {
-      const response = await api.get('/api/campus?isActive=true');
+      const response = await api.get('/campus?isActive=true');
       setCampuses(response.data);
     } catch (err) {
       setError('Failed to fetch campuses');
@@ -72,7 +72,7 @@ const ProgramManagement = () => {
 
   const fetchSchools = async () => {
     try {
-      const response = await api.get('/api/schools?isActive=true');
+      const response = await api.get('/schools?isActive=true');
       setSchools(response.data);
     } catch (err) {
       setError('Failed to fetch schools');
@@ -96,10 +96,10 @@ const ProgramManagement = () => {
       delete dataToSend.duration;
 
       if (editingId) {
-        await api.put(`/api/programs/${editingId}`, dataToSend);
+        await api.put(`/programs/${editingId}`, dataToSend);
         setSuccess('Program updated successfully!');
       } else {
-        await api.post('/api/programs', dataToSend);
+        await api.post('/programs', dataToSend);
         setSuccess('Program created successfully!');
       }
       resetForm();
@@ -133,7 +133,7 @@ const ProgramManagement = () => {
     if (!window.confirm('Are you sure you want to permanently delete this program? This action cannot be undone.')) return;
 
     try {
-      await api.delete(`/api/programs/${id}?permanent=true`);
+      await api.delete(`/programs/${id}?permanent=true`);
       setSuccess('Program deleted permanently!');
       fetchPrograms();
     } catch (err) {

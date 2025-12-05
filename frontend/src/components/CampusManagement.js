@@ -40,7 +40,7 @@ const CampusManagement = () => {
   const fetchCampuses = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/campus');
+      const response = await api.get('/campus');
       setCampuses(response.data);
     } catch (err) {
       setError('Failed to fetch campuses');
@@ -51,7 +51,7 @@ const CampusManagement = () => {
 
   const fetchUniversities = async () => {
     try {
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
     } catch (err) {
       console.error('Failed to fetch universities:', err);
@@ -70,10 +70,10 @@ const CampusManagement = () => {
     try {
       setLoading(true);
       if (editingId) {
-        await api.put(`/api/campus/${editingId}`, formData);
+        await api.put(`/campus/${editingId}`, formData);
         setSuccess('Campus updated successfully!');
       } else {
-        await api.post('/api/campus', formData);
+        await api.post('/campus', formData);
         setSuccess('Campus created successfully!');
       }
       resetForm();
@@ -104,7 +104,7 @@ const CampusManagement = () => {
     if (!window.confirm('Are you sure you want to permanently delete this campus? This action cannot be undone.')) return;
 
     try {
-      await api.delete(`/api/campus/${id}?permanent=true`);
+      await api.delete(`/campus/${id}?permanent=true`);
       setSuccess('Campus deleted permanently!');
       fetchCampuses();
     } catch (err) {
@@ -114,7 +114,7 @@ const CampusManagement = () => {
 
   const handleToggleActive = async (id, currentStatus) => {
     try {
-      await api.patch(`/api/campus/${id}/toggle-active`, { isActive: !currentStatus });
+      await api.patch(`/campus/${id}/toggle-active`, { isActive: !currentStatus });
       setSuccess(`Campus ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
       fetchCampuses();
     } catch (err) {

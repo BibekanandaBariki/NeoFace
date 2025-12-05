@@ -47,9 +47,9 @@ const WebcamCapture = ({ onComplete, isUpdate = false }) => {
         }, 1000);
       } else {
         // Normal registration flow
-      const response = await api.post('/api/face/register', {
-        imageData: capturedFrames[0],
-        frames: capturedFrames
+      const response = await api.post('/face/register', {
+        images: capturedFrames,
+        studentId: null
       });
 
       if (response.data.faceRegistered) {

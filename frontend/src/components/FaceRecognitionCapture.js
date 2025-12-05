@@ -28,10 +28,9 @@ const FaceRecognitionCapture = ({ subjectId, onAttendanceMarked }) => {
       }
 
       setMessage('Recognizing face...');
-      const response = await api.post('/api/face/recognize', {
-        imageData,
-        subjectId,
-        location: null // Can add GPS location here
+      const response = await api.post('/face/recognize', {
+        imageData: imageData,
+        subjectId: subjectId
       });
 
       if (response.data.message && response.data.message.includes('successfully')) {
@@ -39,7 +38,7 @@ const FaceRecognitionCapture = ({ subjectId, onAttendanceMarked }) => {
         const recognized = response.data.recognized || response.data;
         const confidence = response.data.confidence || recognized.confidence || 0;
         setMessage(`✅ Attendance marked for ${recognized.name || 'student'}! (Confidence: ${(confidence * 100).toFixed(1)}%)`);
-        
+
         // Add to recognized list
         setRecognizedStudents(prev => {
           if (!prev.find(s => s.universityId === recognized.universityId)) {
@@ -51,7 +50,7 @@ const FaceRecognitionCapture = ({ subjectId, onAttendanceMarked }) => {
         if (onAttendanceMarked) {
           onAttendanceMarked(response.data.attendance || response.data);
         }
-        
+
         setTimeout(() => {
           setMessage('');
         }, 5000);
@@ -104,7 +103,7 @@ const FaceRecognitionCapture = ({ subjectId, onAttendanceMarked }) => {
             style={{
               padding: '1rem',
               marginBottom: '1rem',
-              background: message.includes('marked') 
+              background: message.includes('marked')
                 ? 'rgba(74, 222, 128, 0.2)'
                 : 'rgba(248, 113, 113, 0.2)',
               borderRadius: '10px',
@@ -135,7 +134,7 @@ const FaceRecognitionCapture = ({ subjectId, onAttendanceMarked }) => {
           <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'white', borderBottom: '1px solid rgba(255,255,255,0.2)', paddingBottom: '0.5rem' }}>Present</h3>
           <motion.ul initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {recognizedStudents.map((student, index) => (
-              <motion.li 
+              <motion.li
                 key={student.universityId}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}

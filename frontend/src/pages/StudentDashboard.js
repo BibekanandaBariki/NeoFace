@@ -32,13 +32,13 @@ const StudentDashboard = () => {
   const fetchData = async () => {
     try {
       // First get student info
-      const userData = await api.get('/api/auth/me');
+      const userData = await api.get('/auth/me');
       
       // Fetch subjects for this student (already filtered by backend)
-      const subjectsRes = await api.get('/api/subjects');
+      const subjectsRes = await api.get('/subjects');
       
       // Fetch attendance for this student (already filtered by backend)
-      const attendanceRes = await api.get('/api/attendance');
+      const attendanceRes = await api.get('/attendance');
       
       // Initialize timetable data
       let timetableRes = { data: {} };
@@ -66,7 +66,7 @@ const StudentDashboard = () => {
         if (typeof userData.data.department === 'string' && userData.data.department.length < 24) {
           try {
             console.log('Fetching branch ID for code:', userData.data.department);
-            const branchRes = await api.get('/api/branches', {
+            const branchRes = await api.get('/branches', {
               params: { code: userData.data.department }
             });
             console.log('Branch response:', branchRes.data);
@@ -87,7 +87,7 @@ const StudentDashboard = () => {
         // Try to get semester ID
         console.log('Fetching semesters for branch:', branchId);
         try {
-          const semestersRes = await api.get('/api/semesters', {
+          const semestersRes = await api.get('/semesters', {
             params: {
               branch: branchId,
               isActive: true
@@ -119,26 +119,26 @@ const StudentDashboard = () => {
           
           // Try to get section timetable
           try {
-            timetableRes = await api.get(`/api/timetables/section/${branchId}/${userData.data.section}/${semesterId}`);
+            timetableRes = await api.get(`/timetables/section/${branchId}/${userData.data.section}/${semesterId}`);
             console.log('Section timetable response:', timetableRes.data);
           } catch (timetableError) {
             console.log('Could not fetch section timetable:', timetableError.response || timetableError);
             // Fallback to general timetables endpoint (already filtered by backend)
-            timetableRes = await api.get('/api/timetables');
+            timetableRes = await api.get('/timetables');
           }
         } catch (semesterError) {
           console.log('Could not fetch semesters:', semesterError);
           // Fallback to general timetables endpoint (already filtered by backend)
-          timetableRes = await api.get('/api/timetables');
+          timetableRes = await api.get('/timetables');
         }
       } else {
         console.log('Missing department or section, falling back to general timetables');
         // Fallback to general timetables endpoint (already filtered by backend)
-        timetableRes = await api.get('/api/timetables');
+        timetableRes = await api.get('/timetables');
       }
       
       // Fetch analytics
-      const analyticsRes = await api.get('/api/analytics/overview');
+      const analyticsRes = await api.get('/analytics/overview');
 
       setSubjects(subjectsRes.data);
       setAttendance(attendanceRes.data);

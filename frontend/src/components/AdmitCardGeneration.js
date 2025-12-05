@@ -15,6 +15,8 @@ const AdmitCardGeneration = () => {
   const [ineligibleStudents, setIneligibleStudents] = useState([]);
   const [checkingEligibility, setCheckingEligibility] = useState(false);
   const [generatingCards, setGeneratingCards] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [filters, setFilters] = useState({
     university: '',
     campus: '',
@@ -26,19 +28,45 @@ const AdmitCardGeneration = () => {
   });
 
   useEffect(() => {
-    fetchUniversities();
-    fetchCampuses();
-    fetchSchools();
-    fetchPrograms();
-    fetchCourses();
-    fetchBatches();
-    // Generate semesters 1-8
-    setSemesters(Array.from({ length: 8 }, (_, i) => i + 1));
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        const [
+          universitiesRes,
+          campusesRes,
+          schoolsRes,
+          programsRes,
+          coursesRes,
+          batchesRes
+        ] = await Promise.all([
+          api.get('/universities?isActive=true'),
+          api.get('/campus?isActive=true'),
+          api.get('/schools?isActive=true'),
+          api.get('/programs?isActive=true'),
+          api.get('/courses?isActive=true'),
+          api.get('/batches?isActive=true')
+        ]);
+
+        setUniversities(universitiesRes.data);
+        setCampuses(campusesRes.data);
+        setSchools(schoolsRes.data);
+        setPrograms(programsRes.data);
+        setCourses(coursesRes.data);
+        setBatches(batchesRes.data);
+      } catch (error) {
+        console.error('Failed to fetch initial data:', error);
+        setError('Failed to fetch data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
   }, []);
 
   const fetchUniversities = async () => {
     try {
-      const { data } = await api.get('/api/universities?isActive=true');
+      const { data } = await api.get('/universities?isActive=true');
       setUniversities(data);
     } catch (error) {
       console.error('Error fetching universities:', error);
@@ -47,7 +75,7 @@ const AdmitCardGeneration = () => {
 
   const fetchCampuses = async () => {
     try {
-      const { data } = await api.get('/api/campus?isActive=true');
+      const { data } = await api.get('/campus?isActive=true');
       setCampuses(data);
     } catch (error) {
       console.error('Error fetching campuses:', error);
@@ -56,7 +84,7 @@ const AdmitCardGeneration = () => {
 
   const fetchSchools = async () => {
     try {
-      const { data } = await api.get('/api/schools?isActive=true');
+      const { data } = await api.get('/schools?isActive=true');
       setSchools(data);
     } catch (error) {
       console.error('Error fetching schools:', error);
@@ -65,7 +93,7 @@ const AdmitCardGeneration = () => {
 
   const fetchPrograms = async () => {
     try {
-      const { data } = await api.get('/api/programs?isActive=true');
+      const { data } = await api.get('/programs?isActive=true');
       setPrograms(data);
     } catch (error) {
       console.error('Error fetching programs:', error);
@@ -74,7 +102,7 @@ const AdmitCardGeneration = () => {
 
   const fetchCourses = async () => {
     try {
-      const { data } = await api.get('/api/courses?isActive=true');
+      const { data } = await api.get('/courses?isActive=true');
       setCourses(data);
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -83,7 +111,7 @@ const AdmitCardGeneration = () => {
 
   const fetchBatches = async () => {
     try {
-      const { data } = await api.get('/api/batches?isActive=true');
+      const { data } = await api.get('/batches?isActive=true');
       setBatches(data);
     } catch (error) {
       console.error('Error fetching batches:', error);
@@ -117,7 +145,7 @@ const AdmitCardGeneration = () => {
         batch: filters.batch,
         semester: filters.semester
       };
-      const { data } = await api.get('/api/examination/check-eligibility', { params });
+      const { data } = await api.get('/examination/check-eligibility', { params });
       setEligibleStudents(data.eligibleStudents || []);
       setIneligibleStudents(data.ineligibleStudents || []);
     } catch (error) {
@@ -136,7 +164,7 @@ const AdmitCardGeneration = () => {
 
     try {
       setGeneratingCards(true);
-      const { data } = await api.post('/api/examination/generate-admit-cards', {
+      const { data } = await api.post('/examination/generate-admit-cards', {
         studentIds: eligibleStudents.map(student => student._id),
         filters
       });

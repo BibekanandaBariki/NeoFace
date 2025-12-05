@@ -62,9 +62,9 @@ const EnhancedTimetableManagement = () => {
     try {
       setLoading(true);
       const [timetablesRes, semestersRes, subjectsRes] = await Promise.all([
-        api.get('/api/timetables'),
-        api.get('/api/semesters?isActive=true'),
-        api.get('/api/subjects')
+        api.get('/timetables'),
+        api.get('/semesters?isActive=true'),
+        api.get('/subjects')
       ]);
       setTimetables(timetablesRes.data);
       setSemesters(semestersRes.data);
@@ -76,18 +76,6 @@ const EnhancedTimetableManagement = () => {
     }
   };
 
-  const handleSemesterChange = (semesterId) => {
-    const semester = semesters.find(s => s._id === semesterId);
-    if (semester) {
-      setSlotForm({
-        ...slotForm,
-        semester: semesterId,
-        branch: semester.branch,
-        section: semester.section || ''
-      });
-    }
-  };
-
   const handleAddSlot = async (e) => {
     e.preventDefault();
     setError('');
@@ -95,7 +83,7 @@ const EnhancedTimetableManagement = () => {
 
     try {
       setLoading(true);
-      const response = await api.post('/api/timetables/add-slot', slotForm);
+      const response = await api.post('/timetables/add-slot', slotForm);
       setSuccess('Time slot added successfully!');
       setCurrentTimetable(response.data.timetable);
       
@@ -128,7 +116,7 @@ const EnhancedTimetableManagement = () => {
     if (!window.confirm('Are you sure you want to delete this timetable?')) return;
 
     try {
-      await api.delete(`/api/timetables/${id}`);
+      await api.delete(`/timetables/${id}`);
       setSuccess('Timetable deleted successfully');
       fetchData();
     } catch (err) {

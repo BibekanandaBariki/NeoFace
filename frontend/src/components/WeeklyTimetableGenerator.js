@@ -36,6 +36,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
   const [branches, setBranches] = useState([]);
   const [batches, setBatches] = useState([]);
   const [semesters, setSemesters] = useState([]);
+  const [sections, setSections] = useState([]);
 
   // Step 2: Configuration data
   const [subjects, setSubjects] = useState([]);
@@ -66,105 +67,168 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
   const [subjectWeeklyClasses, setSubjectWeeklyClasses] = useState({});
 
   // Fetch hierarchical data
-  const fetchUniversities = useCallback(async () => {
+  const fetchUniversities = async () => {
     try {
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
     } catch (error) {
       console.error('Error fetching universities:', error);
+      setError('Failed to load universities');
     }
-  }, []);
+  };
 
-  const fetchCampuses = useCallback(async (universityId) => {
+  const fetchCampuses = async (universityId) => {
     if (!universityId) {
       setCampuses([]);
       return;
     }
     try {
-      const response = await api.get(`/api/campus?university=${universityId}&isActive=true`);
+      const response = await api.get(`/campus?university=${universityId}&isActive=true`);
       setCampuses(response.data);
     } catch (error) {
       console.error('Error fetching campuses:', error);
+      setError('Failed to load campuses');
     }
-  }, []);
+  };
 
-  const fetchSchools = useCallback(async (campusId) => {
+  const fetchSchools = async (campusId) => {
     if (!campusId) {
       setSchools([]);
       return;
     }
     try {
-      const response = await api.get(`/api/schools?campus=${campusId}&isActive=true`);
+      const response = await api.get(`/schools?campus=${campusId}&isActive=true`);
       setSchools(response.data);
     } catch (error) {
       console.error('Error fetching schools:', error);
+      setError('Failed to load schools');
     }
-  }, []);
+  };
 
-  const fetchPrograms = useCallback(async (schoolId) => {
+  const fetchPrograms = async (schoolId) => {
     if (!schoolId) {
       setPrograms([]);
       return;
     }
     try {
-      const response = await api.get(`/api/programs?school=${schoolId}&isActive=true`);
+      const response = await api.get(`/programs?school=${schoolId}&isActive=true`);
       setPrograms(response.data);
     } catch (error) {
       console.error('Error fetching programs:', error);
+      setError('Failed to load programs');
     }
-  }, []);
+  };
 
-  const fetchCourses = useCallback(async (programId) => {
+  const fetchCourses = async (programId) => {
     if (!programId) {
       setCourses([]);
       return;
     }
     try {
-      const response = await api.get(`/api/courses?program=${programId}&isActive=true`);
+      const response = await api.get(`/courses?program=${programId}&isActive=true`);
       setCourses(response.data);
     } catch (error) {
       console.error('Error fetching courses:', error);
+      setError('Failed to load courses');
     }
-  }, []);
+  };
 
-  const fetchBranches = useCallback(async (courseId) => {
+  const fetchBranches = async (courseId) => {
     if (!courseId) {
       setBranches([]);
       return;
     }
     try {
-      const response = await api.get(`/api/branches?course=${courseId}&isActive=true`);
+      const response = await api.get(`/branches?course=${courseId}&isActive=true`);
       setBranches(response.data);
     } catch (error) {
       console.error('Error fetching branches:', error);
+      setError('Failed to load branches');
     }
-  }, []);
+  };
 
-  const fetchBatches = useCallback(async (branchId) => {
+  const fetchBatches = async (branchId) => {
     if (!branchId) {
       setBatches([]);
       return;
     }
     try {
-      const response = await api.get(`/api/batches?branch=${branchId}&isActive=true`);
+      const response = await api.get(`/batches?branch=${branchId}&isActive=true`);
       setBatches(response.data);
     } catch (error) {
       console.error('Error fetching batches:', error);
+      setError('Failed to load batches');
     }
-  }, []);
+  };
 
-  const fetchSemesters = useCallback(async (branchId) => {
+  const fetchSemesters = async (branchId) => {
     if (!branchId) {
       setSemesters([]);
       return;
     }
     try {
-      const response = await api.get(`/api/semesters?branch=${branchId}&isActive=true`);
+      const response = await api.get(`/semesters?branch=${branchId}&isActive=true`);
       setSemesters(response.data);
     } catch (error) {
       console.error('Error fetching semesters:', error);
+      setError('Failed to load semesters');
     }
-  }, []);
+  };
+
+  const fetchSections = async (semesterId) => {
+    if (!semesterId) {
+      setSections([]);
+      return;
+    }
+    try {
+      // Fetch the semester details to get the section
+      const response = await api.get(`/semesters/${semesterId}`);
+      if (response.data && response.data.section) {
+        setSections([response.data.section]);
+      } else {
+        setSections([]);
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+      setError('Failed to load sections');
+    }
+  };
+
+  // Fetch subjects and teachers
+  const fetchSubjectsAndTeachers = async (branchId, semesterNumber) => {
+    if (!branchId || !semesterNumber) {
+      setSubjects([]);
+      setTeachers([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError('');
+
+      // Fetch subjects
+      const subjectsResponse = await api.get(`/subjects?branch=${branchId}&semester=${semesterNumber}`);
+      
+      // Fetch teachers (faculty members)
+      const teachersResponse = await api.get('/users?role=admin'); // Assuming teachers are stored as admins
+
+      setSubjects(subjectsResponse.data);
+      setTeachers(teachersResponse.data);
+
+      // Initialize subject weekly classes with default value of 3
+      const initialWeeklyClasses = {};
+      subjectsResponse.data.forEach(subject => {
+        initialWeeklyClasses[subject._id] = 3; // Default to 3 classes per week
+      });
+      setSubjectWeeklyClasses(initialWeeklyClasses);
+
+    } catch (error) {
+      console.error('Error fetching subjects and teachers:', error);
+      setError('Failed to load subjects and teachers: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Initialize data on component mount
   useEffect(() => {
@@ -204,6 +268,10 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         break;
       case 'batch':
         setSelectionData(prev => ({ ...prev, semester: '' }));
+        break;
+      case 'semester':
+        setSelectionData(prev => ({ ...prev, section: '' }));
+        fetchSections(value);
         break;
       default:
         break;
@@ -461,7 +529,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
       };
       
       // Call the backend API to generate the timetable
-      const response = await api.post('/api/timetables/generate', generationData);
+      const response = await api.post('/timetables/generate', generationData);
       
       if (response.data.success) {
         setGeneratedTimetable(response.data.timetable);
@@ -515,7 +583,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         schedule: generatedTimetable.schedule
       };
       
-      await api.post('/api/timetables', timetableData);
+      await api.post('/timetables', timetableData);
       setSuccess('Timetable saved successfully!');
     } catch (err) {
       setError('Failed to save timetable: ' + (err.response?.data?.message || err.message));

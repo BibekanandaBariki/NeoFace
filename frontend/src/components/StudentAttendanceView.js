@@ -20,8 +20,8 @@ const StudentAttendanceView = ({ studentId }) => {
     try {
       setLoading(true);
       const [summaryRes, dayWiseRes] = await Promise.all([
-        api.get(`/api/attendance/student/${studentId}/summary`),
-        api.get(`/api/attendance/student/${studentId}/day-wise`)
+        api.get(`/attendance/student/${studentId}/summary`),
+        api.get(`/attendance/student/${studentId}/day-wise`)
       ]);
       setSummary(summaryRes.data);
       setDayWise(dayWiseRes.data);

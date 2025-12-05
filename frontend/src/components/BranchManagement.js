@@ -37,13 +37,20 @@ const BranchManagement = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [branchesRes, campusesRes, programsRes, coursesRes, universitiesRes, schoolsRes] = await Promise.all([
-        api.get('/api/branches'),
-        api.get('/api/campus?isActive=true'),
-        api.get('/api/programs?isActive=true'),
-        api.get('/api/courses?isActive=true'),
-        api.get('/api/universities?isActive=true'),
-        api.get('/api/schools?isActive=true')
+      const [
+        branchesRes,
+        campusesRes,
+        programsRes,
+        coursesRes,
+        universitiesRes,
+        schoolsRes
+      ] = await Promise.all([
+        api.get('/branches'),
+        api.get('/campus?isActive=true'),
+        api.get('/programs?isActive=true'),
+        api.get('/courses?isActive=true'),
+        api.get('/universities?isActive=true'),
+        api.get('/schools?isActive=true')
       ]);
       setBranches(branchesRes.data);
       setCampuses(campusesRes.data);
@@ -69,7 +76,7 @@ const BranchManagement = () => {
         await api.put(`/api/branches/${editingId}`, formData);
         setSuccess('Branch updated successfully!');
       } else {
-        await api.post('/api/branches', formData);
+        await api.post('/branches', formData);
         setSuccess('Branch created successfully!');
       }
       resetForm();

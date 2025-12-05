@@ -50,10 +50,10 @@ const AdminDashboard = () => {
   const fetchData = async () => {
     try {
       const [studentsRes, subjectsRes, attendanceRes, analyticsRes] = await Promise.all([
-        api.get('/api/students'),
-        api.get('/api/subjects'),
-        api.get('/api/attendance'),
-        api.get('/api/analytics/overview')
+        api.get('/students'),
+        api.get('/subjects'),
+        api.get('/attendance'),
+        api.get('/analytics/overview')
       ]);
 
       setStudents(studentsRes.data);
@@ -72,7 +72,7 @@ const AdminDashboard = () => {
 
   const handleApprove = async (studentId) => {
     try {
-      await api.post(`/api/face/approve/${studentId}`);
+      await api.post(`/face/approve/${studentId}`);
       fetchData();
     } catch (error) {
       alert('Failed to approve registration');
@@ -81,7 +81,7 @@ const AdminDashboard = () => {
 
   const handleReject = async (studentId) => {
     try {
-      await api.post(`/api/face/reject/${studentId}`);
+      await api.post(`/face/reject/${studentId}`);
       fetchData();
     } catch (error) {
       alert('Failed to reject registration');
@@ -91,7 +91,7 @@ const AdminDashboard = () => {
   const handleAddStudent = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/students', newStudent);
+      await api.post('/students', newStudent);
       const loginInfo = `Student created successfully!
 
 Login Credentials:
@@ -119,7 +119,7 @@ Password: ${newStudent.universityId}
   const handleAddSubject = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/api/subjects', newSubject);
+      await api.post('/subjects', newSubject);
       setShowAddSubject(false);
       setNewSubject({
         code: '',
@@ -134,14 +134,9 @@ Password: ${newStudent.universityId}
     }
   };
 
-  const handleAttendanceMarked = (newAttendanceRecord) => {
-    setAttendance(prev => [newAttendanceRecord, ...prev]);
-    // Optionally, show a more subtle notification instead of an alert
-  };
-
   const handleMarkAttendance = async (studentId, subjectId, date, status = 'present') => {
     try {
-      await api.post('/api/attendance/manual', {
+      await api.post('/attendance/manual', {
         studentId,
         subjectId,
         date,
@@ -152,6 +147,10 @@ Password: ${newStudent.universityId}
     } catch (error) {
       alert(error.response?.data?.message || 'Failed to mark attendance');
     }
+  };
+
+  const handleAttendanceMarked = (newAttendanceRecord) => {
+    setAttendance(prev => [newAttendanceRecord, ...prev]);
   };
 
   const tabs = ['overview', 'timetable', 'students', 'subjects', 'attendance', 'analytics'];

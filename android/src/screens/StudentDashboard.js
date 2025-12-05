@@ -27,8 +27,8 @@ const StudentDashboard = ({ navigation }) => {
       setUser(userData);
 
       const [subjectsRes, attendanceRes] = await Promise.all([
-        api.get('/api/subjects'),
-        api.get('/api/attendance'),
+        api.get('/subjects'),
+        api.get('/attendance'),
       ]);
 
       setSubjects(subjectsRes.data);

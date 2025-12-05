@@ -7,8 +7,8 @@ const UniversityManagement = () => {
   const [universities, setUniversities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [editingUniversity, setEditingUniversity] = useState(null);
-  const [formData, setFormData] = useState({
+  const [editingId, setEditingId] = useState(null);
+  const [universityForm, setUniversityForm] = useState({
     name: '',
     code: '',
     address: {
@@ -26,6 +26,8 @@ const UniversityManagement = () => {
     establishedYear: '',
     accreditation: ''
   });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     fetchUniversities();
@@ -34,10 +36,11 @@ const UniversityManagement = () => {
   const fetchUniversities = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
     } catch (error) {
       console.error('Error fetching universities:', error);
+      setError('Failed to fetch universities');
     } finally {
       setLoading(false);
     }
@@ -45,45 +48,28 @@ const UniversityManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Debug: Log the exact data being sent
-    console.log('Submitting university data:', formData);
-    console.log('Name field:', formData.name);
-    console.log('Code field:', formData.code);
-    
+    setError('');
+    setSuccess('');
+
     try {
       setLoading(true);
-      if (editingUniversity) {
-        await api.put(`/api/universities/${editingUniversity._id}`, formData);
+      const formData = {
+        ...universityForm,
+        establishedYear: parseInt(universityForm.establishedYear)
+      };
+
+      if (editingId) {
+        await api.put(`/universities/${editingId}`, formData);
+        setSuccess('University updated successfully!');
       } else {
-        await api.post('/api/universities', formData);
+        await api.post('/universities', formData);
+        setSuccess('University created successfully!');
       }
-      
-      setShowForm(false);
-      setEditingUniversity(null);
-      setFormData({
-        name: '',
-        code: '',
-        address: {
-          street: '',
-          city: '',
-          state: '',
-          country: '',
-          pincode: ''
-        },
-        contactInfo: {
-          phone: '',
-          email: '',
-          website: ''
-        },
-        establishedYear: '',
-        accreditation: ''
-      });
+      resetForm();
       fetchUniversities();
     } catch (error) {
-      console.error('Error saving university:', error);
-      console.error('Error response data:', error.response?.data);
-      console.error('Error response status:', error.response?.status);
+      console.error('University submission error:', error);
+      setError(error.response?.data?.message || `Failed to ${editingId ? 'update' : 'create'} university`);
     } finally {
       setLoading(false);
     }
@@ -91,23 +77,29 @@ const UniversityManagement = () => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to permanently delete this university? This action cannot be undone.')) return;
-    
+
     try {
-      setLoading(true);
-      await api.delete(`/api/universities/${id}?permanent=true`);
+      await api.delete(`/universities/${id}?permanent=true`);
+      setSuccess('University deleted permanently!');
       fetchUniversities();
     } catch (error) {
-      console.error('Error deleting university:', error);
-      // Show error to user
-      alert('Error deleting university: ' + (error.response?.data?.message || error.message));
-    } finally {
-      setLoading(false);
+      setError(error.response?.data?.message || 'Failed to delete university');
+    }
+  };
+
+  const handleToggleActive = async (id, currentStatus) => {
+    try {
+      await api.patch(`/universities/${id}/toggle-active`, { isActive: !currentStatus });
+      setSuccess(`University ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+      fetchUniversities();
+    } catch (error) {
+      setError('Failed to update university status');
     }
   };
 
   const handleEdit = (university) => {
-    setEditingUniversity(university);
-    setFormData({
+    setEditingId(university._id);
+    setUniversityForm({
       name: university.name || '',
       code: university.code || '',
       address: {
@@ -130,12 +122,10 @@ const UniversityManagement = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    console.log('handleChange called:', name, '=', value); // Debug log
-    
+
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
-      setFormData(prev => ({
+      setUniversityForm(prev => ({
         ...prev,
         [parent]: {
           ...prev[parent],
@@ -143,11 +133,34 @@ const UniversityManagement = () => {
         }
       }));
     } else {
-      setFormData(prev => ({
+      setUniversityForm(prev => ({
         ...prev,
         [name]: value
       }));
     }
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
+    setUniversityForm({
+      name: '',
+      code: '',
+      address: {
+        street: '',
+        city: '',
+        state: '',
+        country: '',
+        pincode: ''
+      },
+      contactInfo: {
+        phone: '',
+        email: '',
+        website: ''
+      },
+      establishedYear: '',
+      accreditation: ''
+    });
+    setShowForm(false);
   };
 
   return (
@@ -158,26 +171,11 @@ const UniversityManagement = () => {
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => {
-            setEditingUniversity(null);
-            setFormData({
-              name: '',
-              code: '',
-              address: {
-                street: '',
-                city: '',
-                state: '',
-                country: '',
-                pincode: ''
-              },
-              contactInfo: {
-                phone: '',
-                email: '',
-                website: ''
-              },
-              establishedYear: '',
-              accreditation: ''
-            });
-            setShowForm(!showForm);
+            if (showForm) {
+              resetForm();
+            } else {
+              setShowForm(true);
+            }
           }}
           className="glass-button"
           style={{ padding: '0.75rem 1.5rem' }}
@@ -194,7 +192,7 @@ const UniversityManagement = () => {
           style={{ padding: '1.5rem', marginBottom: '2rem' }}
         >
           <h3 style={{ color: 'white', marginBottom: '1.5rem' }}>
-            {editingUniversity ? 'Edit University' : 'Add New University'}
+            {editingId ? 'Edit University' : 'Add New University'}
           </h3>
           
           <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -203,7 +201,7 @@ const UniversityManagement = () => {
               <input
                 type="text"
                 name="name"
-                value={formData.name}
+                value={universityForm.name}
                 onChange={handleChange}
                 required
                 className="glass-input"
@@ -217,7 +215,7 @@ const UniversityManagement = () => {
               <input
                 type="text"
                 name="code"
-                value={formData.code}
+                value={universityForm.code}
                 onChange={handleChange}
                 required
                 className="glass-input"
@@ -231,7 +229,7 @@ const UniversityManagement = () => {
               <input
                 type="number"
                 name="establishedYear"
-                value={formData.establishedYear}
+                value={universityForm.establishedYear}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="2010"
@@ -244,7 +242,7 @@ const UniversityManagement = () => {
               <input
                 type="text"
                 name="accreditation"
-                value={formData.accreditation}
+                value={universityForm.accreditation}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="A+"
@@ -257,7 +255,7 @@ const UniversityManagement = () => {
               <input
                 type="text"
                 name="address.street"
-                value={formData.address.street}
+                value={universityForm.address.street}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="Street Address"
@@ -270,7 +268,7 @@ const UniversityManagement = () => {
               <input
                 type="text"
                 name="address.city"
-                value={formData.address.city}
+                value={universityForm.address.city}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="City"
@@ -283,7 +281,7 @@ const UniversityManagement = () => {
               <input
                 type="text"
                 name="address.state"
-                value={formData.address.state}
+                value={universityForm.address.state}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="State"
@@ -296,7 +294,7 @@ const UniversityManagement = () => {
               <input
                 type="text"
                 name="address.country"
-                value={formData.address.country}
+                value={universityForm.address.country}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="Country"
@@ -309,7 +307,7 @@ const UniversityManagement = () => {
               <input
                 type="text"
                 name="address.pincode"
-                value={formData.address.pincode}
+                value={universityForm.address.pincode}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="123456"
@@ -322,7 +320,7 @@ const UniversityManagement = () => {
               <input
                 type="text"
                 name="contactInfo.phone"
-                value={formData.contactInfo.phone}
+                value={universityForm.contactInfo.phone}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="1234567890"
@@ -335,7 +333,7 @@ const UniversityManagement = () => {
               <input
                 type="email"
                 name="contactInfo.email"
-                value={formData.contactInfo.email}
+                value={universityForm.contactInfo.email}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="admin@university.edu"
@@ -348,7 +346,7 @@ const UniversityManagement = () => {
               <input
                 type="url"
                 name="contactInfo.website"
-                value={formData.contactInfo.website}
+                value={universityForm.contactInfo.website}
                 onChange={handleChange}
                 className="glass-input"
                 placeholder="https://university.edu"
@@ -359,7 +357,7 @@ const UniversityManagement = () => {
             <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={resetForm}
                 className="glass-button"
                 style={{ padding: '0.5rem 1rem' }}
               >
@@ -371,7 +369,7 @@ const UniversityManagement = () => {
                 className="glass-button"
                 style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
               >
-                {loading ? 'Saving...' : editingUniversity ? 'Update' : 'Create'}
+                {loading ? 'Saving...' : editingId ? 'Update' : 'Create'}
               </button>
             </div>
           </form>

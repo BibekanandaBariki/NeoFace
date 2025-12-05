@@ -31,9 +31,9 @@ const SubjectManagement = () => {
     setLoading(true);
     try {
       const [subjectsRes, branchesRes, facultyRes] = await Promise.all([
-        api.get('/api/subjects'),
-        api.get('/api/branches?isActive=true'),
-        api.get('/api/users?role=admin') // Fetch faculty (admins)
+        api.get('/subjects'),
+        api.get('/branches?isActive=true'),
+        api.get('/users?role=admin') // Fetch faculty (admins)
       ]);
       setSubjects(subjectsRes.data);
       setBranches(branchesRes.data);
@@ -74,7 +74,7 @@ const SubjectManagement = () => {
         submitData.timetable = formData.timetable;
       }
 
-      const url = editingSubject ? `/api/subjects/${editingSubject._id}` : '/api/subjects';
+      const url = editingSubject ? `/subjects/${editingSubject._id}` : '/subjects';
       const method = editingSubject ? 'put' : 'post';
       await api[method](url, submitData);
       
@@ -94,11 +94,25 @@ const SubjectManagement = () => {
     if (!window.confirm('Are you sure you want to delete this subject?')) return;
     setLoading(true);
     try {
-      await api.delete(`/api/subjects/${id}`);
+      await api.delete(`/subjects/${id}`);
       fetchData();
     } catch (error) {
       console.error('Error deleting subject:', error);
       alert(`Error: ${error.response?.data?.message || 'Failed to delete subject'}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePermanentDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to PERMANENTLY DELETE this subject? This action cannot be undone and will remove all related attendance records.')) return;
+    setLoading(true);
+    try {
+      await api.delete(`/subjects/${id}?permanent=true`);
+      fetchData();
+    } catch (error) {
+      console.error('Error permanently deleting subject:', error);
+      alert(`Error: ${error.response?.data?.message || 'Failed to permanently delete subject'}`);
     } finally {
       setLoading(false);
     }
@@ -438,6 +452,13 @@ const SubjectManagement = () => {
                     style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255, 107, 107, 0.2)' }}
                   >
                     Delete
+                  </button>
+                  <button
+                    onClick={() => handlePermanentDelete(subject._id)}
+                    className="glass-button"
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(150, 0, 0, 0.3)' }}
+                  >
+                    Perm.
                   </button>
                 </div>
               </motion.div>

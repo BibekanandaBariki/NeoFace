@@ -23,7 +23,7 @@ const TeacherTimetableView = () => {
       // Handle both id and _id fields for consistency
       const userId = user.id || user._id;
       console.log('Using userId for API call:', userId);
-      const response = await api.get(`/api/timetables/teacher/${userId}`);
+      const response = await api.get(`/timetables/teacher/${userId}`);
       console.log('Teacher timetable response:', response.data);
       setSchedule(response.data.schedule);
     } catch (err) {

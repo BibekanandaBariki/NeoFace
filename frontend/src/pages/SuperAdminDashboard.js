@@ -21,6 +21,7 @@ import CourseManagement from '../components/CourseManagement';
 import AdmitCardGeneration from '../components/AdmitCardGeneration';
 import SuperAdminOverride from '../components/SuperAdminOverride';
 import SubjectManagement from '../components/SubjectManagement';
+import AISupportChat from '../components/AISupportChat';
 import '../styles/glassmorphism.css';
 
 const SuperAdminDashboard = () => {
@@ -102,7 +103,7 @@ const SuperAdminDashboard = () => {
   // Fetch universities and campuses
   const fetchUniversities = async () => {
     try {
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
     } catch (error) {
       console.error('Error fetching universities:', error);
@@ -111,7 +112,7 @@ const SuperAdminDashboard = () => {
 
   const fetchCampuses = async () => {
     try {
-      const response = await api.get('/api/campus?isActive=true');
+      const response = await api.get('/campus?isActive=true');
       setCampuses(response.data);
     } catch (error) {
       console.error('Error fetching campuses:', error);
@@ -120,7 +121,7 @@ const SuperAdminDashboard = () => {
 
   const fetchBranches = async () => {
     try {
-      const response = await api.get('/api/branches');
+      const response = await api.get('/branches');
       console.log('Branches fetched:', response.data);
       setBranches(response.data);
     } catch (error) {
@@ -130,7 +131,7 @@ const SuperAdminDashboard = () => {
 
   const fetchSchools = async () => {
     try {
-      const response = await api.get('/api/schools');
+      const response = await api.get('/schools');
       setSchools(response.data);
     } catch (error) {
       console.error('Error fetching schools:', error);
@@ -139,7 +140,7 @@ const SuperAdminDashboard = () => {
 
   const fetchPrograms = async () => {
     try {
-      const response = await api.get('/api/programs');
+      const response = await api.get('/programs');
       setPrograms(response.data);
     } catch (error) {
       console.error('Error fetching programs:', error);
@@ -148,7 +149,7 @@ const SuperAdminDashboard = () => {
 
   const fetchCourses = async () => {
     try {
-      const response = await api.get('/api/courses');
+      const response = await api.get('/courses');
       setCourses(response.data);
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -157,7 +158,7 @@ const SuperAdminDashboard = () => {
 
   const fetchBatches = async () => {
     try {
-      const response = await api.get('/api/batches');
+      const response = await api.get('/batches');
       setBatches(response.data);
     } catch (error) {
       console.error('Error fetching batches:', error);
@@ -173,7 +174,7 @@ const SuperAdminDashboard = () => {
     fetchPrograms();
     fetchCourses();
     fetchBatches();
-    
+
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
   }, []);
@@ -181,26 +182,26 @@ const SuperAdminDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch all data in parallel
       const [
-        studentsRes, 
-        adminsRes, 
-        subjectsRes, 
-        timetableRes, 
+        studentsRes,
+        adminsRes,
+        subjectsRes,
+        timetableRes,
         analyticsRes,
         universitiesRes,
         campusesRes,
         branchesRes
       ] = await Promise.all([
-        api.get('/api/students'),
-        api.get('/api/users?role=admin,campusadmin,hod'),
-        api.get('/api/subjects'),
-        api.get('/api/timetables'),
-        api.get('/api/analytics/overview'),
-        api.get('/api/universities?isActive=true'),
-        api.get('/api/campus?isActive=true'),
-        api.get('/api/branches')
+        api.get('/students'),
+        api.get('/users?role=admin,campusadmin,hod'),
+        api.get('/subjects'),
+        api.get('/timetables'),
+        api.get('/analytics/overview'),
+        api.get('/universities?isActive=true'),
+        api.get('/campus?isActive=true'),
+        api.get('/branches')
       ]);
 
       const studentsData = studentsRes.data;
@@ -239,17 +240,17 @@ const SuperAdminDashboard = () => {
         role: newAdmin.role || 'admin',
         department: newAdmin.department
       };
-      
+
       // Only include universityId and campusId if they are selected
       if (newAdmin.universityId) adminData.universityId = newAdmin.universityId;
       if (newAdmin.campusId) adminData.assignedCampus = newAdmin.campusId;
-      
-      await api.post('/api/users', adminData);
+
+      await api.post('/users', adminData);
       setShowAddAdmin(false);
-      setNewAdmin({ 
-        name: '', 
-        email: '', 
-        password: '', 
+      setNewAdmin({
+        name: '',
+        email: '',
+        password: '',
         department: '',
         role: 'admin',
         universityId: '',
@@ -266,8 +267,8 @@ const SuperAdminDashboard = () => {
     e.preventDefault();
     try {
       // Validate required fields
-      if (!newStudent.name || !newStudent.email || !newStudent.universityId || 
-          !newStudent.department || !newStudent.semester) {
+      if (!newStudent.name || !newStudent.email || !newStudent.universityId ||
+        !newStudent.department || !newStudent.semester) {
         alert('Please fill in all required fields: Name, Email, University ID, Department, and Semester');
         return;
       }
@@ -292,11 +293,11 @@ const SuperAdminDashboard = () => {
       };
 
       console.log('Creating student with data:', studentData);
-      
-      const response = await api.post('/api/students', studentData);
-      
+
+      const response = await api.post('/students', studentData);
+
       console.log('Student created successfully:', response.data);
-      
+
       const loginInfo = `Student created successfully!
 
 Login Credentials:
@@ -319,9 +320,9 @@ Password: ${studentData.universityId}
     } catch (error) {
       console.error('Create student error:', error);
       console.error('Error response:', error.response?.data);
-      
+
       let errorMessage = 'Failed to create student. Please check all fields.';
-      
+
       if (error.response?.data) {
         if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
           errorMessage = error.response.data.errors.map(e => e.msg || e.message).join(', ');
@@ -333,7 +334,7 @@ Password: ${studentData.universityId}
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       alert(`Error: ${errorMessage}`);
     }
   };
@@ -345,12 +346,12 @@ Password: ${studentData.universityId}
         alert('Please select a faculty/admin for this subject');
         return;
       }
-      
+
       // First create subject
-      const subjectRes = await api.post('/api/subjects', {
+      const subjectRes = await api.post('/subjects', {
         ...newSubject
       });
-      
+
       // If timetable slots exist, update timetable
       if (newSubject.timetable.length > 0) {
         await api.put(`/api/timetables/${subjectRes.data._id}`, {
@@ -394,7 +395,7 @@ Password: ${studentData.universityId}
 
   const handleMarkAttendance = async (studentId, subjectId, date, status = 'present') => {
     try {
-      await api.post('/api/attendance/manual', {
+      await api.post('/attendance/manual', {
         studentId,
         subjectId,
         date,
@@ -427,14 +428,14 @@ Password: ${studentData.universityId}
 
   const handleDelete = async (type, id) => {
     if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
-    
+
     try {
       // Map frontend type to backend endpoint
-      const endpoint = type === 'students' ? '/api/students' : 
-                      type === 'subjects' ? '/api/subjects' : 
-                      type === 'users' ? '/api/users' : 
-                      `/api/${type}`;
-      
+      const endpoint = type === 'students' ? '/api/students' :
+        type === 'subjects' ? '/api/subjects' :
+          type === 'users' ? '/api/users' :
+            `/api/${type}`;
+
       await api.delete(`${endpoint}/${id}`);
       fetchDashboardData();
     } catch (error) {
@@ -517,11 +518,11 @@ Password: ${studentData.universityId}
         isActive: editUserData.isActive,
         isVerified: editUserData.isVerified
       };
-      
+
       // Only include universityId and campusId if they are selected
       if (editUserData.universityId) userData.universityId = editUserData.universityId;
       if (editUserData.campusId) userData.assignedCampus = editUserData.campusId;
-      
+
       await api.put(`/api/users/${editingUser._id}`, userData);
       alert('User updated successfully!');
       setShowEditUserModal(false);
@@ -618,45 +619,45 @@ Password: ${studentData.universityId}
         {/* Overview Tab */}
         {activeTab === 'overview' && (
           <>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-          gap: '1.5rem',
-          marginBottom: '2rem'
-        }}>
-          <GlassCard>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '1.5rem',
+              marginBottom: '2rem'
+            }}>
+              <GlassCard>
                 <h3 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1rem' }}>
                   Total Students
                 </h3>
                 <p style={{ color: 'white', fontSize: '3rem', fontWeight: 'bold' }}>
-              {stats.totalStudents}
-            </p>
-          </GlassCard>
-          <GlassCard>
+                  {stats.totalStudents}
+                </p>
+              </GlassCard>
+              <GlassCard>
                 <h3 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1rem' }}>
                   Total Admins
                 </h3>
                 <p style={{ color: 'white', fontSize: '3rem', fontWeight: 'bold' }}>
-              {stats.totalAdmins}
-            </p>
-          </GlassCard>
-          <GlassCard>
+                  {stats.totalAdmins}
+                </p>
+              </GlassCard>
+              <GlassCard>
                 <h3 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1rem' }}>
                   Total Subjects
                 </h3>
                 <p style={{ color: 'white', fontSize: '3rem', fontWeight: 'bold' }}>
-              {stats.totalSubjects}
-            </p>
-          </GlassCard>
-          <GlassCard>
+                  {stats.totalSubjects}
+                </p>
+              </GlassCard>
+              <GlassCard>
                 <h3 style={{ color: 'white', marginBottom: '0.5rem', fontSize: '1rem' }}>
                   Pending Registrations
                 </h3>
                 <p style={{ color: 'white', fontSize: '3rem', fontWeight: 'bold' }}>
-              {stats.pendingRegistrations}
-            </p>
-          </GlassCard>
-        </div>
+                  {stats.pendingRegistrations}
+                </p>
+              </GlassCard>
+            </div>
 
             {analytics && (
               <>
@@ -818,7 +819,7 @@ Password: ${studentData.universityId}
                     </div>
                   </form>
 
-              </motion.div>
+                </motion.div>
               )}
 
               <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
@@ -852,8 +853,8 @@ Password: ${studentData.universityId}
                       <button
                         onClick={() => handleEditUser(admin)}
                         className="glass-button"
-                        style={{ 
-                          padding: '0.5rem 1rem', 
+                        style={{
+                          padding: '0.5rem 1rem',
                           fontSize: '0.85rem',
                           background: 'rgba(59, 130, 246, 0.3)'
                         }}
@@ -867,8 +868,8 @@ Password: ${studentData.universityId}
                           setShowPasswordModal(true);
                         }}
                         className="glass-button"
-                        style={{ 
-                          padding: '0.5rem 1rem', 
+                        style={{
+                          padding: '0.5rem 1rem',
                           fontSize: '0.85rem',
                           background: 'rgba(251, 191, 36, 0.3)'
                         }}
@@ -931,8 +932,8 @@ Password: ${studentData.universityId}
                       📝 Student Login Information:
                     </p>
                     <p style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '0.85rem', margin: 0 }}>
-                      After creation, student will login with:<br/>
-                      <strong>Email:</strong> The email you enter below<br/>
+                      After creation, student will login with:<br />
+                      <strong>Email:</strong> The email you enter below<br />
                       <strong>Password:</strong> Their University ID (same as entered below)
                     </p>
                   </div>
@@ -973,13 +974,13 @@ Password: ${studentData.universityId}
                           const program = programs.find(p => p._id === branch.program);
                           const school = schools.find(s => s._id === branch.school);
                           const university = universities.find(u => u._id === branch.university);
-                          
+
                           return (
                             <option key={branch._id} value={branch.code}>
-                              {branch.name} ({branch.code}) - 
-                              {university ? ` ${university.name}` : ''} - 
-                              {campus ? ` ${campus.name}` : ''} - 
-                              {school ? ` ${school.name}` : ''} - 
+                              {branch.name} ({branch.code}) -
+                              {university ? ` ${university.name}` : ''} -
+                              {campus ? ` ${campus.name}` : ''} -
+                              {school ? ` ${school.name}` : ''} -
                               {program ? ` ${program.name}` : ''}
                             </option>
                           );
@@ -1025,7 +1026,7 @@ Password: ${studentData.universityId}
                     </div>
                   </form>
 
-              </motion.div>
+                </motion.div>
               )}
 
               <div style={{ maxHeight: '600px', overflowY: 'auto' }}>
@@ -1059,8 +1060,8 @@ Password: ${studentData.universityId}
                       <button
                         onClick={() => handleEditStudent(student)}
                         className="glass-button"
-                        style={{ 
-                          padding: '0.5rem 1rem', 
+                        style={{
+                          padding: '0.5rem 1rem',
                           fontSize: '0.85rem',
                           background: 'rgba(59, 130, 246, 0.3)'
                         }}
@@ -1073,8 +1074,8 @@ Password: ${studentData.universityId}
                           setShowFaceUpdateModal(true);
                         }}
                         className="glass-button"
-                        style={{ 
-                          padding: '0.5rem 1rem', 
+                        style={{
+                          padding: '0.5rem 1rem',
                           fontSize: '0.85rem',
                           background: 'rgba(251, 191, 36, 0.3)'
                         }}
@@ -1122,7 +1123,7 @@ Password: ${studentData.universityId}
 
         {/* Timetable Tab (old) */}
         {activeTab === 'timetable' && (
-        <GlassCard>
+          <GlassCard>
             <h2 style={{ color: 'white', marginBottom: '1rem' }}>Weekly Timetable</h2>
             <div style={{ display: 'grid', gap: '1rem' }}>
               {Object.entries(timetable).map(([day, classes]) => (
@@ -1172,7 +1173,7 @@ Password: ${studentData.universityId}
                 </motion.div>
               ))}
             </div>
-        </GlassCard>
+          </GlassCard>
         )}
 
         {/* Analytics Tab */}
@@ -1337,7 +1338,7 @@ Password: ${studentData.universityId}
               <p style={{ color: 'rgba(255, 255, 255, 0.8)', marginBottom: '1rem' }}>
                 Please rotate your head slowly in a circular motion to capture multiple angles.
               </p>
-              <WebcamCapture 
+              <WebcamCapture
                 onComplete={handleFaceUpdateComplete}
                 isUpdate={true}
               />
@@ -1601,6 +1602,9 @@ Password: ${studentData.universityId}
           </motion.div>
         )}
       </div>
+
+      {/* AI Support Chat - Available 24/7 on all pages */}
+      <AISupportChat />
     </div>
   );
 };

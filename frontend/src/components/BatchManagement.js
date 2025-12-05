@@ -48,14 +48,22 @@ const BatchManagement = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [batchesRes, campusesRes, programsRes, branchesRes, universitiesRes, schoolsRes, coursesRes] = await Promise.all([
-        api.get('/api/batches'),
-        api.get('/api/campus?isActive=true'),
-        api.get('/api/programs?isActive=true'),
-        api.get('/api/branches?isActive=true'),
-        api.get('/api/universities?isActive=true'),
-        api.get('/api/schools?isActive=true'),
-        api.get('/api/courses?isActive=true')
+      const [
+        batchesRes,
+        campusesRes,
+        programsRes,
+        branchesRes,
+        universitiesRes,
+        schoolsRes,
+        coursesRes
+      ] = await Promise.all([
+        api.get('/batches'),
+        api.get('/campus?isActive=true'),
+        api.get('/programs?isActive=true'),
+        api.get('/branches?isActive=true'),
+        api.get('/universities?isActive=true'),
+        api.get('/schools?isActive=true'),
+        api.get('/courses?isActive=true')
       ]);
       setBatches(batchesRes.data);
       setCampuses(campusesRes.data);
@@ -96,7 +104,7 @@ const BatchManagement = () => {
         await api.put(`/api/batches/${editingId}`, submitData);
         setSuccess('Batch updated successfully!');
       } else {
-        await api.post('/api/batches', submitData);
+        await api.post('/batches', submitData);
         setSuccess('Batch created successfully!');
       }
       resetForm();

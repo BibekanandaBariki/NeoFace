@@ -1,0 +1,52 @@
+# NeoFace Deployment Configuration
+
+## Backend (Node.js/Express) - Render Configuration
+
+### Environment Variables for Render Dashboard:
+```
+MONGODB_URI=mongodb+srv://username:password@cluster0.example.mongodb.net/neoface
+JWT_SECRET=YOUR_STRONG_JWT_SECRET_HERE
+SUPERADMIN_PASSWORD=YOUR_SECURE_PASSWORD_HERE
+NODE_ENV=production
+PORT=8080
+```
+
+### Build and Start Commands:
+- Build Command: `npm install`
+- Start Command: `npm start`
+
+### Procfile Content:
+```
+web: node server.js
+```
+
+## Frontend (React) - Vercel/Netlify Configuration
+
+### Environment Variables:
+```
+REACT_APP_API_URL=https://your-backend-url.onrender.com/api
+```
+
+### Build Settings:
+- Build Command: `npm run build`
+- Publish Directory: `build`
+
+## Commands to Generate Secrets:
+
+### Generate Strong JWT Secret:
+```bash
+openssl rand -base64 48
+```
+
+### Example Values for Testing:
+- MONGODB_URI: Get from MongoDB Atlas after creating free cluster
+- JWT_SECRET: Output from the openssl command above
+- SUPERADMIN_PASSWORD: A strong, unique password for your SuperAdmin account
+
+## Deployment Steps:
+
+1. Create MongoDB Atlas free cluster and get connection string
+2. Generate JWT secret using openssl
+3. Set up Render with the backend configuration above
+4. Deploy frontend to Vercel/Netlify with the configuration above
+5. Test all functionality after deployment

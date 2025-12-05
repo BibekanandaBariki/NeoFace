@@ -38,11 +38,10 @@ const CourseManagement = () => {
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/courses');
+      const response = await api.get('/courses');
       setCourses(response.data);
     } catch (error) {
       console.error('Error fetching courses:', error);
-      setError('Failed to fetch courses');
     } finally {
       setLoading(false);
     }
@@ -50,41 +49,37 @@ const CourseManagement = () => {
 
   const fetchUniversities = async () => {
     try {
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
     } catch (error) {
       console.error('Error fetching universities:', error);
-      setError('Failed to fetch universities');
     }
   };
 
   const fetchCampuses = async () => {
     try {
-      const response = await api.get('/api/campus?isActive=true');
+      const response = await api.get('/campus?isActive=true');
       setCampuses(response.data);
     } catch (error) {
       console.error('Error fetching campuses:', error);
-      setError('Failed to fetch campuses');
     }
   };
 
   const fetchSchools = async () => {
     try {
-      const response = await api.get('/api/schools?isActive=true');
+      const response = await api.get('/schools?isActive=true');
       setSchools(response.data);
     } catch (error) {
       console.error('Error fetching schools:', error);
-      setError('Failed to fetch schools');
     }
   };
 
   const fetchPrograms = async () => {
     try {
-      const response = await api.get('/api/programs?isActive=true');
+      const response = await api.get('/programs?isActive=true');
       setPrograms(response.data);
     } catch (error) {
       console.error('Error fetching programs:', error);
-      setError('Failed to fetch programs');
     }
   };
 
@@ -101,7 +96,7 @@ const CourseManagement = () => {
         await api.put(`/api/courses/${editingCourse._id}`, formData);
         setSuccess('Course updated successfully!');
       } else {
-        await api.post('/api/courses', formData);
+        await api.post('/courses', formData);
         setSuccess('Course created successfully!');
       }
       

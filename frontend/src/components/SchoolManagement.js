@@ -30,7 +30,7 @@ const SchoolManagement = () => {
   const fetchSchools = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/schools');
+      const response = await api.get('/schools');
       setSchools(response.data);
     } catch (error) {
       console.error('Error fetching schools:', error);
@@ -41,7 +41,7 @@ const SchoolManagement = () => {
 
   const fetchUniversities = async () => {
     try {
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
     } catch (error) {
       console.error('Error fetching universities:', error);
@@ -50,7 +50,7 @@ const SchoolManagement = () => {
 
   const fetchCampuses = async () => {
     try {
-      const response = await api.get('/api/campus?isActive=true');
+      const response = await api.get('/campus?isActive=true');
       setCampuses(response.data);
     } catch (error) {
       console.error('Error fetching campuses:', error);
@@ -64,9 +64,9 @@ const SchoolManagement = () => {
       setLoading(true);
       
       if (editingSchool) {
-        await api.put(`/api/schools/${editingSchool._id}`, formData);
+        await api.put(`/schools/${editingSchool._id}`, formData);
       } else {
-        await api.post('/api/schools', formData);
+        await api.post('/schools', formData);
       }
       
       setShowForm(false);
@@ -94,7 +94,7 @@ const SchoolManagement = () => {
     
     try {
       setLoading(true);
-      await api.delete(`/api/schools/${id}?permanent=true`);
+      await api.delete(`/schools/${id}?permanent=true`);
       fetchSchools();
     } catch (error) {
       console.error('Error deleting school:', error);

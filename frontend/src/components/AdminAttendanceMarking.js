@@ -51,7 +51,7 @@ const AdminAttendanceMarking = () => {
   const fetchSubjects = useCallback(async () => {
     try {
       setLoading(true);
-      let url = '/api/subjects?isActive=true';
+      let url = '/subjects?isActive=true';
       
       // Add hierarchical filters if selected
       if (selectedUniversity) url += `&universityId=${selectedUniversity}`;
@@ -96,7 +96,7 @@ const AdminAttendanceMarking = () => {
       });
 
       setLoading(true);
-      const response = await api.get(`/api/students?department=${subject.department}&semester=${subject.semester}`);
+      const response = await api.get(`/students?department=${subject.department}&semester=${subject.semester}`);
       setStudents(response.data);
       
       // Initialize attendance data
@@ -156,7 +156,7 @@ const AdminAttendanceMarking = () => {
       });
       
       setLoading(true);
-      const response = await api.get(`/api/timetables/for-date/${selectedDate}`, {
+      const response = await api.get(`/timetables/for-date/${selectedDate}`, {
         params: {
           branch: branchIdentifier,
           section: section
@@ -248,7 +248,7 @@ const AdminAttendanceMarking = () => {
   const fetchUniversities = useCallback(async () => {
     try {
       setHierarchicalLoading(prev => ({ ...prev, universities: true }));
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
     } catch (err) {
       console.error('Failed to fetch universities:', err);
@@ -261,7 +261,7 @@ const AdminAttendanceMarking = () => {
   const fetchCampuses = useCallback(async (universityId) => {
     try {
       setHierarchicalLoading(prev => ({ ...prev, campuses: true }));
-      const response = await api.get(`/api/campus?university=${universityId}&isActive=true`);
+      const response = await api.get(`/campus?university=${universityId}&isActive=true`);
       setCampuses(response.data);
     } catch (err) {
       console.error('Failed to fetch campuses:', err);
@@ -274,7 +274,7 @@ const AdminAttendanceMarking = () => {
   const fetchSchools = useCallback(async (campusId) => {
     try {
       setHierarchicalLoading(prev => ({ ...prev, schools: true }));
-      const response = await api.get(`/api/schools?campus=${campusId}&isActive=true`);
+      const response = await api.get(`/schools?campus=${campusId}&isActive=true`);
       setSchools(response.data);
     } catch (err) {
       console.error('Failed to fetch schools:', err);
@@ -287,7 +287,7 @@ const AdminAttendanceMarking = () => {
   const fetchPrograms = useCallback(async (schoolId) => {
     try {
       setHierarchicalLoading(prev => ({ ...prev, programs: true }));
-      const response = await api.get(`/api/programs?school=${schoolId}&isActive=true`);
+      const response = await api.get(`/programs?school=${schoolId}&isActive=true`);
       setPrograms(response.data);
     } catch (err) {
       console.error('Failed to fetch programs:', err);
@@ -300,7 +300,7 @@ const AdminAttendanceMarking = () => {
   const fetchCourses = useCallback(async (programId) => {
     try {
       setHierarchicalLoading(prev => ({ ...prev, courses: true }));
-      const response = await api.get(`/api/courses?program=${programId}&isActive=true`);
+      const response = await api.get(`/courses?program=${programId}&isActive=true`);
       setCourses(response.data);
     } catch (err) {
       console.error('Failed to fetch courses:', err);
@@ -313,7 +313,7 @@ const AdminAttendanceMarking = () => {
   const fetchBranches = useCallback(async (courseId) => {
     try {
       setHierarchicalLoading(prev => ({ ...prev, branches: true }));
-      const response = await api.get(`/api/branches?course=${courseId}&isActive=true`);
+      const response = await api.get(`/branches?course=${courseId}&isActive=true`);
       setBranches(response.data);
     } catch (err) {
       console.error('Failed to fetch branches:', err);
@@ -326,7 +326,7 @@ const AdminAttendanceMarking = () => {
   const fetchBatches = useCallback(async (branchId) => {
     try {
       setHierarchicalLoading(prev => ({ ...prev, batches: true }));
-      const response = await api.get(`/api/batches?branch=${branchId}&isActive=true`);
+      const response = await api.get(`/batches?branch=${branchId}&isActive=true`);
       setBatches(response.data);
     } catch (err) {
       console.error('Failed to fetch batches:', err);
@@ -443,7 +443,7 @@ const AdminAttendanceMarking = () => {
         defaultStatus: 'absent'
       });
 
-      await api.post('/api/attendance/bulk-mark', {
+      await api.post('/attendance/bulk-mark', {
         students: attendanceRecords,
         subjectId: selectedSubject,
         date: selectedDate,

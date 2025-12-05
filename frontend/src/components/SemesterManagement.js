@@ -46,16 +46,16 @@ const SemesterManagement = () => {
   // Hierarchical data fetching functions
   const fetchUniversities = async () => {
     try {
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
-    } catch (err) {
-      console.error('Failed to fetch universities:', err);
+    } catch (error) {
+      console.error('Error fetching universities:', error);
     }
   };
 
   const fetchCampuses = async (universityId) => {
     try {
-      const response = await api.get(`/api/campus?university=${universityId}&isActive=true`);
+      const response = await api.get(`/campus?university=${universityId}&isActive=true`);
       setCampuses(response.data);
     } catch (err) {
       console.error('Failed to fetch campuses:', err);
@@ -64,7 +64,7 @@ const SemesterManagement = () => {
 
   const fetchSchools = async (campusId) => {
     try {
-      const response = await api.get(`/api/schools?campus=${campusId}&isActive=true`);
+      const response = await api.get(`/schools?campus=${campusId}&isActive=true`);
       setSchools(response.data);
     } catch (err) {
       console.error('Failed to fetch schools:', err);
@@ -73,7 +73,7 @@ const SemesterManagement = () => {
 
   const fetchPrograms = async (schoolId) => {
     try {
-      const response = await api.get(`/api/programs?school=${schoolId}&isActive=true`);
+      const response = await api.get(`/programs?school=${schoolId}&isActive=true`);
       setPrograms(response.data);
     } catch (err) {
       console.error('Failed to fetch programs:', err);
@@ -82,7 +82,7 @@ const SemesterManagement = () => {
 
   const fetchCourses = async (programId) => {
     try {
-      const response = await api.get(`/api/courses?program=${programId}&isActive=true`);
+      const response = await api.get(`/courses?program=${programId}&isActive=true`);
       setCourses(response.data);
     } catch (err) {
       console.error('Failed to fetch courses:', err);
@@ -91,7 +91,7 @@ const SemesterManagement = () => {
 
   const fetchBranches = async (courseId) => {
     try {
-      const response = await api.get(`/api/branches?course=${courseId}&isActive=true`);
+      const response = await api.get(`/branches?course=${courseId}&isActive=true`);
       setBranches(response.data);
     } catch (err) {
       console.error('Failed to fetch branches:', err);
@@ -101,7 +101,7 @@ const SemesterManagement = () => {
   const fetchBatches = async (branchId) => {
     try {
       console.log('Fetching batches for branch:', branchId);
-      const response = await api.get(`/api/batches?branch=${branchId}&isActive=true`);
+      const response = await api.get(`/batches?branch=${branchId}&isActive=true`);
       console.log('Batches response:', response.data);
       setBatches(response.data);
     } catch (err) {
@@ -227,13 +227,10 @@ const SemesterManagement = () => {
 
   const fetchSemesters = async () => {
     try {
-      setLoading(true);
-      const response = await api.get('/api/semesters');
+      const response = await api.get('/semesters');
       setSemesters(response.data);
-    } catch (err) {
-      setError('Failed to load semesters');
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching semesters:', error);
     }
   };
 
@@ -253,10 +250,10 @@ const SemesterManagement = () => {
       };
       
       if (editingId) {
-        await api.put(`/api/semesters/${editingId}`, semesterData);
+        await api.put(`/semesters/${editingId}`, semesterData);
         setSuccess('Semester updated successfully!');
       } else {
-        await api.post('/api/semesters', semesterData);
+        await api.post('/semesters', semesterData);
         setSuccess('Semester created successfully!');
       }
       setShowForm(false);
@@ -355,7 +352,7 @@ const SemesterManagement = () => {
     if (!window.confirm('Are you sure you want to delete this semester?')) return;
 
     try {
-      await api.delete(`/api/semesters/${id}`);
+      await api.delete(`/semesters/${id}`);
       setSuccess('Semester deleted successfully');
       fetchSemesters();
     } catch (err) {
@@ -365,7 +362,7 @@ const SemesterManagement = () => {
 
   const handleToggleActive = async (id, currentStatus) => {
     try {
-      await api.put(`/api/semesters/${id}`, { isActive: !currentStatus });
+      await api.put(`/semesters/${id}`, { isActive: !currentStatus });
       setSuccess('Semester status updated');
       fetchSemesters();
     } catch (err) {

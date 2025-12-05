@@ -49,7 +49,7 @@ const TimetableManagement = () => {
   // Hierarchical data fetching functions
   const fetchUniversities = useCallback(async () => {
     try {
-      const response = await api.get('/api/universities?isActive=true');
+      const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
     } catch (error) {
       console.error('Error fetching universities:', error);
@@ -62,7 +62,7 @@ const TimetableManagement = () => {
       return;
     }
     try {
-      const response = await api.get(`/api/campus?university=${universityId}&isActive=true`);
+      const response = await api.get(`/campus?university=${universityId}&isActive=true`);
       setCampuses(response.data);
     } catch (error) {
       console.error('Error fetching campuses:', error);
@@ -75,7 +75,7 @@ const TimetableManagement = () => {
       return;
     }
     try {
-      const response = await api.get(`/api/schools?campus=${campusId}&isActive=true`);
+      const response = await api.get(`/schools?campus=${campusId}&isActive=true`);
       setSchools(response.data);
     } catch (error) {
       console.error('Error fetching schools:', error);
@@ -88,7 +88,7 @@ const TimetableManagement = () => {
       return;
     }
     try {
-      const response = await api.get(`/api/programs?school=${schoolId}&isActive=true`);
+      const response = await api.get(`/programs?school=${schoolId}&isActive=true`);
       setPrograms(response.data);
     } catch (error) {
       console.error('Error fetching programs:', error);
@@ -101,7 +101,7 @@ const TimetableManagement = () => {
       return;
     }
     try {
-      const response = await api.get(`/api/courses?program=${programId}&isActive=true`);
+      const response = await api.get(`/courses?program=${programId}&isActive=true`);
       setCourses(response.data);
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -114,7 +114,7 @@ const TimetableManagement = () => {
       return;
     }
     try {
-      const response = await api.get(`/api/branches?course=${courseId}&isActive=true`);
+      const response = await api.get(`/branches?course=${courseId}&isActive=true`);
       setBranches(response.data);
     } catch (error) {
       console.error('Error fetching branches:', error);
@@ -127,7 +127,7 @@ const TimetableManagement = () => {
       return;
     }
     try {
-      const response = await api.get(`/api/batches?branch=${branchId}&isActive=true`);
+      const response = await api.get(`/batches?branch=${branchId}&isActive=true`);
       setBatches(response.data);
     } catch (error) {
       console.error('Error fetching batches:', error);
@@ -138,9 +138,9 @@ const TimetableManagement = () => {
     try {
       setLoading(true);
       const [timetablesRes, semestersRes, subjectsRes] = await Promise.all([
-        api.get('/api/timetables'),
-        api.get('/api/semesters?isActive=true'),
-        api.get('/api/subjects?isActive=true')
+        api.get('/timetables'),
+        api.get('/semesters?isActive=true'),
+        api.get('/subjects?isActive=true')
       ]);
       console.log('Semesters data:', semestersRes.data);
       setTimetables(timetablesRes.data);
@@ -282,7 +282,7 @@ const TimetableManagement = () => {
 
     // Check for teacher conflicts across existing timetables
     try {
-      const existingTimetables = await api.get('/api/timetables?isActive=true');
+      const existingTimetables = await api.get('/timetables?isActive=true');
       const teacherConflicts = [];
 
       Object.entries(teacherTimeSlots).forEach(([facultyId, newSlots]) => {
@@ -370,10 +370,10 @@ const TimetableManagement = () => {
       console.log('Timetable data being sent:', timetableData);
       
       if (editingId) {
-        await api.put(`/api/timetables/${editingId}`, timetableData);
+        await api.put(`/timetables/${editingId}`, timetableData);
         setSuccess('Timetable updated successfully with no conflicts!');
       } else {
-        await api.post('/api/timetables', timetableData);
+        await api.post('/timetables', timetableData);
         setSuccess('Timetable created successfully with no conflicts!');
       }
       setShowForm(false);
@@ -463,7 +463,7 @@ const TimetableManagement = () => {
     if (!window.confirm('Are you sure you want to delete this timetable?')) return;
 
     try {
-      await api.delete(`/api/timetables/${id}`);
+      await api.delete(`/timetables/${id}`);
       setSuccess('Timetable deleted successfully');
       fetchData();
     } catch (err) {
