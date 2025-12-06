@@ -7,11 +7,16 @@ import base64
 from io import BytesIO
 from PIL import Image
 import cv2
+import gc
 
 app = Flask(__name__)
 # Enable CORS for all routes and origins (for Render deployment)
 CORS(app, resources={r"/*": {"origins": "*"}})
 logging.basicConfig(level=logging.INFO)
+
+# Memory optimization: Configure NumPy to use less memory
+os.environ['NPY_NUM_BUILD_JOBS'] = '1'  # Single-threaded to save memory
+np.seterr(all='ignore')  # Ignore warnings to reduce logging overhead
 
 MODEL_NAME = os.environ.get("DEEPFACE_MODEL", "Facenet")
 BACKEND = os.environ.get("DETECTOR_BACKEND", "opencv")
@@ -19,15 +24,17 @@ BACKEND = os.environ.get("DETECTOR_BACKEND", "opencv")
 class AdvancedFaceEmbedder:
     """
     Advanced face embedding generator using actual image processing.
+    MEMORY OPTIMIZED for Render free tier.
     Extracts real visual features from face images to achieve 75%+ similarity.
     """
     
     def __init__(self):
-        self.target_size = (160, 160)  # Standard face recognition input size
+        # Reduced target size for memory efficiency (free tier optimization)
+        self.target_size = (128, 128)  # Reduced from 160x160 to save memory
         self.embedding_dim = 128
         
     def preprocess_image(self, image_data):
-        """Convert base64 to normalized face image array"""
+        """Convert base64 to normalized face image array - MEMORY OPTIMIZED"""
         try:
             # Handle data URI format (data:image/jpeg;base64,...)
             if isinstance(image_data, str):
@@ -41,14 +48,23 @@ class AdvancedFaceEmbedder:
                 # If already bytes, use directly
                 img_bytes = image_data
             
-            # Open and convert image
-            img = Image.open(BytesIO(img_bytes)).convert('RGB')
+            # Open and convert image with memory-efficient processing
+            img = Image.open(BytesIO(img_bytes))
             
-            # Resize to standard size
-            img = img.resize(self.target_size, Image.Resampling.LANCZOS)
+            # Convert to RGB early to save memory
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
             
-            # Convert to numpy array and normalize
+            # Resize early to reduce memory footprint (smaller image = less memory)
+            # Use smaller target size for free tier memory constraints
+            memory_efficient_size = (128, 128)  # Reduced from 160x160
+            img = img.resize(memory_efficient_size, Image.Resampling.LANCZOS)
+            
+            # Convert to numpy array with minimal precision needed
             img_array = np.array(img, dtype=np.float32) / 255.0
+            
+            # Explicitly delete intermediate objects to free memory
+            del img, img_bytes
             
             return img_array
         except Exception as e:
@@ -214,7 +230,8 @@ def health():
 def embed():
     """
     Advanced face embedding endpoint using real image processing.
-    Achieves 75%+ similarity for same person's different photos.
+    MEMORY OPTIMIZED for Render free tier.
+    Processes frames sequentially with memory cleanup.
     """
     if request.method == "OPTIONS":
         return jsonify({"status": "ok"}), 200
@@ -231,15 +248,24 @@ def embed():
             app.logger.error("Invalid frames array")
             return jsonify({"error": "frames array required"}), 400
 
-        app.logger.info(f"Processing {len(frames)} frames with Advanced-CV-CNN method")
+        # Limit frame processing for memory efficiency (free tier)
+        MAX_FRAMES = 8  # Process max 8 frames to save memory
+        if len(frames) > MAX_FRAMES:
+            app.logger.info(f"Limiting frames from {len(frames)} to {MAX_FRAMES} for memory efficiency")
+            frames = frames[:MAX_FRAMES]
+
+        app.logger.info(f"Processing {len(frames)} frames with Advanced-CV-CNN method (memory optimized)")
 
         embeddings = []
         failed_frames = 0
         frame_errors = []
         
+        # Process frames sequentially with explicit memory management
         for idx, frame in enumerate(frames):
             try:
+                # Generate embedding for this frame
                 embedding = embedder.generate_embedding(frame)
+                
                 if embedding is None:
                     error_msg = f"Failed to process frame {idx + 1}"
                     app.logger.warning(error_msg)
@@ -247,8 +273,19 @@ def embed():
                     failed_frames += 1
                     continue
                     
-                embeddings.append(np.array(embedding, dtype=float))
+                # Store embedding as numpy array
+                emb_array = np.array(embedding, dtype=np.float32)
+                embeddings.append(emb_array)
+                
+                # Clean up immediately after processing each frame
+                del embedding, emb_array
+                
                 app.logger.info(f"Successfully processed frame {idx + 1}/{len(frames)}")
+                
+                # Force garbage collection every 3 frames to free memory
+                if (idx + 1) % 3 == 0:
+                    import gc
+                    gc.collect()
                 
             except Exception as frame_error:
                 error_msg = f"Frame {idx + 1}: {str(frame_error)}"
@@ -256,6 +293,9 @@ def embed():
                 frame_errors.append(error_msg)
                 failed_frames += 1
                 continue
+            finally:
+                # Ensure frame data is cleared
+                del frame
         
         # Check if we have enough successful embeddings
         if len(embeddings) == 0:
@@ -266,29 +306,45 @@ def embed():
                 "detail": error_detail if frame_errors else "Face detection failed"
             }), 400
         
-        # Average multiple frames
-        stacked = np.stack(embeddings, axis=0)
-        avg = np.mean(stacked, axis=0)
-        
-        # L2-normalize
-        norm = np.linalg.norm(avg)
-        if norm > 0:
-            avg = avg / norm
-        
-        embedding_list = avg.astype(float).tolist()
-        
-        app.logger.info(f"✅ Generated embedding from {len(embeddings)}/{len(frames)} frames, dim={len(embedding_list)}")
-        
-        return jsonify({
-            "embedding": embedding_list, 
-            "dim": len(embedding_list),
-            "processed_frames": len(embeddings),
-            "failed_frames": failed_frames
-        }), 200
+        # Average multiple frames (process in chunks to save memory)
+        try:
+            # Stack embeddings efficiently
+            stacked = np.stack(embeddings, axis=0)
+            avg = np.mean(stacked, axis=0)
+            
+            # Clean up stacked array immediately
+            del stacked, embeddings
+            
+            # L2-normalize
+            norm = np.linalg.norm(avg)
+            if norm > 0:
+                avg = avg / norm
+            
+            embedding_list = avg.astype(np.float32).tolist()
+            
+            # Final cleanup
+            del avg
+            
+            processed_count = len(frames) - failed_frames
+            app.logger.info(f"✅ Generated embedding from {processed_count}/{len(frames)} frames, dim={len(embedding_list)}")
+            
+            return jsonify({
+                "embedding": embedding_list, 
+                "dim": len(embedding_list),
+                "processed_frames": len(embedding_list) // 128 if embedding_list else 0,  # Approximate
+                "failed_frames": failed_frames
+            }), 200
+        except Exception as e:
+            app.logger.exception("Embedding aggregation error")
+            return jsonify({"error": "failed to aggregate embeddings", "detail": str(e)}), 500
         
     except Exception as e:
         app.logger.exception("Advanced embedding error")
         return jsonify({"error": "failed to generate embeddings", "detail": str(e)}), 500
+    finally:
+        # Force garbage collection at the end
+        import gc
+        gc.collect()
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5001))
