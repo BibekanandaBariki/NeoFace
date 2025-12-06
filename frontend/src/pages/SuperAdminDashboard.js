@@ -330,12 +330,29 @@ const SuperAdminDashboard = () => {
 
     try {
       // Get the user ID from the student record
-      const userId = editingStudent.userId || editingStudent.user?._id;
+      // userId can be an ObjectId string or a populated User object
+      let userId;
+      if (typeof editingStudent.userId === 'object' && editingStudent.userId !== null) {
+        // If populated User object, extract _id or id
+        userId = editingStudent.userId._id || editingStudent.userId.id;
+      } else if (editingStudent.userId) {
+        // If it's already a string/ObjectId
+        userId = editingStudent.userId;
+      } else if (editingStudent.user?._id || editingStudent.user?.id) {
+        // Fallback to user object
+        userId = editingStudent.user._id || editingStudent.user.id;
+      }
+      
+      // Convert to string if it's an ObjectId
+      userId = userId?.toString();
+      
       if (!userId) {
         alert('Cannot find user ID for this student');
+        console.error('Student object:', editingStudent);
         return;
       }
 
+      console.log('Changing password for userId:', userId);
       await api.put(`/users/${userId}/password`, {
         newPassword: studentNewPassword
       });

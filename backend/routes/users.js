@@ -198,7 +198,13 @@ router.put('/:id/password', [
     }
 
     const { newPassword } = req.body;
-    const userId = req.params.id;
+    let userId = req.params.id;
+
+    // Validate userId is a valid ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      console.error('Invalid userId format:', userId);
+      return res.status(400).json({ message: 'Invalid user ID format' });
+    }
 
     const user = await User.findById(userId);
     if (!user) {
