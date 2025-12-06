@@ -1,0 +1,13 @@
+# Lightweight requirements for Render Free Tier
+# Uses app_advanced.py which doesn't require TensorFlow/DeepFace
+
+flask>=2.0
+flask-cors>=3.0.10
+numpy>=1.19
+opencv-python-headless>=4.5
+gunicorn>=20.1
+Pillow>=9.0.0
+
+# Note: TensorFlow and DeepFace are NOT required for app_advanced.py
+# This saves ~500MB+ of memory and disk space
+
