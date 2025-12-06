@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: neoface-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGIN
+        value: https://neoface-frontend.vercel.app
+      - key: FACE_SERVICE_URL
+        value: https://neoface-python-service.onrender.com
+      - key: FACE_SIMILARITY_THRESHOLD
+        value: 0.75
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: SUPERADMIN_PASSWORD
+        sync: false
