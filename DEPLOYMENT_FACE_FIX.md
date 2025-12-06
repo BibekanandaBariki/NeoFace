@@ -147,3 +147,4 @@ Face registration and detection were working on localhost but failing on deploye
 - `backend/server.js` - Fixed CORS configuration
 - `backend/services/faceRecognition.js` - Improved error handling and timeout
 
+
