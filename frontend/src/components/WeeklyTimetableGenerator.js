@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import api from '../utils/api';
 import GlassCard from './GlassCard';
-import { convertTo12Hour, convertTo24Hour } from '../utils/timeFormat';
+import { convertTo12Hour } from '../utils/timeFormat';
 import '../styles/glassmorphism.css';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
