@@ -9,7 +9,7 @@ import CourseManagement from '../components/CourseManagement';
 import '../styles/glassmorphism.css';
 
 const UniversityAdminDashboard = () => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth(); // Remove unused 'user' variable
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState({
     totalCampuses: 0,

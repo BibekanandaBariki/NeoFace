@@ -159,21 +159,11 @@ const SubjectManagement = () => {
     }));
   };
 
-  const handleFacultyChange = (index, field, value) => {
-    const updatedFaculty = [...formData.faculty];
-    updatedFaculty[index][field] = value;
+  const handleFacultyChange = (facultyId) => {
+    const updatedFaculty = faculty.find(f => f._id === facultyId) || null;
     setFormData(prev => ({
       ...prev,
       faculty: updatedFaculty
-    }));
-  };
-
-  const handleTimetableChange = (index, field, value) => {
-    const updatedTimetable = [...formData.timetable];
-    updatedTimetable[index][field] = value;
-    setFormData(prev => ({
-      ...prev,
-      timetable: updatedTimetable
     }));
   };
 

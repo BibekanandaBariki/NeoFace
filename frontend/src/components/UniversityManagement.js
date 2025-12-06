@@ -1,471 +1,229 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import GlassCard from './GlassCard';
 import api from '../utils/api';
+import GlassCard from './GlassCard';
 
 const UniversityManagement = () => {
   const [universities, setUniversities] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [universityForm, setUniversityForm] = useState({
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [formData, setFormData] = useState({
     name: '',
     code: '',
-    address: {
-      street: '',
-      city: '',
-      state: '',
-      country: '',
-      pincode: ''
-    },
-    contactInfo: {
-      phone: '',
-      email: '',
-      website: ''
-    },
-    establishedYear: '',
-    accreditation: ''
+    address: '',
+    contactEmail: '',
+    contactPhone: '',
+    website: '',
+    isActive: true
   });
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+
+  const fetchUniversities = async () => {
+    try {
+      const response = await api.get('/universities');
+      setUniversities(response.data);
+    } catch (error) {
+      console.error('Error fetching universities:', error);
+    }
+  };
 
   useEffect(() => {
     fetchUniversities();
   }, []);
 
-  const fetchUniversities = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get('/universities?isActive=true');
-      setUniversities(response.data);
-    } catch (error) {
-      console.error('Error fetching universities:', error);
-      setError('Failed to fetch universities');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-
     try {
-      setLoading(true);
-      const formData = {
-        ...universityForm,
-        establishedYear: parseInt(universityForm.establishedYear)
-      };
-
-      if (editingId) {
-        await api.put(`/universities/${editingId}`, formData);
-        setSuccess('University updated successfully!');
+      if (formData._id) {
+        await api.put(`/universities/${formData._id}`, formData);
       } else {
         await api.post('/universities', formData);
-        setSuccess('University created successfully!');
       }
-      resetForm();
+      setShowAddForm(false);
+      setFormData({
+        name: '',
+        code: '',
+        address: '',
+        contactEmail: '',
+        contactPhone: '',
+        website: '',
+        isActive: true
+      });
       fetchUniversities();
     } catch (error) {
-      console.error('University submission error:', error);
-      setError(error.response?.data?.message || `Failed to ${editingId ? 'update' : 'create'} university`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to permanently delete this university? This action cannot be undone.')) return;
-
-    try {
-      await api.delete(`/universities/${id}?permanent=true`);
-      setSuccess('University deleted permanently!');
-      fetchUniversities();
-    } catch (error) {
-      setError(error.response?.data?.message || 'Failed to delete university');
-    }
-  };
-
-  const handleToggleActive = async (id, currentStatus) => {
-    try {
-      await api.patch(`/universities/${id}/toggle-active`, { isActive: !currentStatus });
-      setSuccess(`University ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
-      fetchUniversities();
-    } catch (error) {
-      setError('Failed to update university status');
+      console.error('Error saving university:', error);
     }
   };
 
   const handleEdit = (university) => {
-    setEditingId(university._id);
-    setUniversityForm({
-      name: university.name || '',
-      code: university.code || '',
-      address: {
-        street: university.address?.street || '',
-        city: university.address?.city || '',
-        state: university.address?.state || '',
-        country: university.address?.country || '',
-        pincode: university.address?.pincode || ''
-      },
-      contactInfo: {
-        phone: university.contactInfo?.phone || '',
-        email: university.contactInfo?.email || '',
-        website: university.contactInfo?.website || ''
-      },
-      establishedYear: university.establishedYear || '',
-      accreditation: university.accreditation || ''
-    });
-    setShowForm(true);
+    setFormData(university);
+    setShowAddForm(true);
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setUniversityForm(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value
-        }
-      }));
-    } else {
-      setUniversityForm(prev => ({
-        ...prev,
-        [name]: value
-      }));
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this university?')) return;
+    
+    try {
+      await api.delete(`/universities/${id}`);
+      fetchUniversities();
+    } catch (error) {
+      console.error('Error deleting university:', error);
     }
   };
 
-  const resetForm = () => {
-    setEditingId(null);
-    setUniversityForm({
-      name: '',
-      code: '',
-      address: {
-        street: '',
-        city: '',
-        state: '',
-        country: '',
-        pincode: ''
-      },
-      contactInfo: {
-        phone: '',
-        email: '',
-        website: ''
-      },
-      establishedYear: '',
-      accreditation: ''
-    });
-    setShowForm(false);
-  };
-
   return (
-    <div>
+    <div className="university-management">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h2 style={{ color: 'white', margin: 0 }}>University Management</h2>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            if (showForm) {
-              resetForm();
-            } else {
-              setShowForm(true);
-            }
-          }}
+        <h2 style={{ color: 'white' }}>University Management</h2>
+        <button 
           className="glass-button"
-          style={{ padding: '0.75rem 1.5rem' }}
+          onClick={() => {
+            setFormData({
+              name: '',
+              code: '',
+              address: '',
+              contactEmail: '',
+              contactPhone: '',
+              website: '',
+              isActive: true
+            });
+            setShowAddForm(!showAddForm);
+          }}
         >
-          {showForm ? 'Cancel' : '+ Add University'}
-        </motion.button>
+          {showAddForm ? 'Cancel' : 'Add University'}
+        </button>
       </div>
 
-      {showForm && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card"
-          style={{ padding: '1.5rem', marginBottom: '2rem' }}
-        >
-          <h3 style={{ color: 'white', marginBottom: '1.5rem' }}>
-            {editingId ? 'Edit University' : 'Add New University'}
-          </h3>
-          
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Name *</label>
-              <input
-                type="text"
-                name="name"
-                value={universityForm.name}
-                onChange={handleChange}
-                required
-                className="glass-input"
-                placeholder="University Name"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
+      {showAddForm ? (
+        <GlassCard>
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: '0.5rem' }}>
+                  University Name
+                </label>
+                <input
+                  type="text"
+                  className="glass-input"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: '0.5rem' }}>
+                  University Code
+                </label>
+                <input
+                  type="text"
+                  className="glass-input"
+                  value={formData.code}
+                  onChange={(e) => setFormData({...formData, code: e.target.value})}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: '0.5rem' }}>
+                  Contact Email
+                </label>
+                <input
+                  type="email"
+                  className="glass-input"
+                  value={formData.contactEmail}
+                  onChange={(e) => setFormData({...formData, contactEmail: e.target.value})}
+                />
+              </div>
+              
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: '0.5rem' }}>
+                  Contact Phone
+                </label>
+                <input
+                  type="tel"
+                  className="glass-input"
+                  value={formData.contactPhone}
+                  onChange={(e) => setFormData({...formData, contactPhone: e.target.value})}
+                />
+              </div>
             </div>
             
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Code *</label>
-              <input
-                type="text"
-                name="code"
-                value={universityForm.code}
-                onChange={handleChange}
-                required
-                className="glass-input"
-                placeholder="UNIV"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: '0.5rem' }}>
+                  Address
+                </label>
+                <textarea
+                  className="glass-input"
+                  value={formData.address}
+                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  rows="2"
+                />
+              </div>
+              
+              <div>
+                <label style={{ color: 'rgba(255,255,255,0.8)', display: 'block', marginBottom: '0.5rem' }}>
+                  Website
+                </label>
+                <input
+                  type="url"
+                  className="glass-input"
+                  value={formData.website}
+                  onChange={(e) => setFormData({...formData, website: e.target.value})}
+                />
+              </div>
             </div>
             
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Established Year</label>
-              <input
-                type="number"
-                name="establishedYear"
-                value={universityForm.establishedYear}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="2010"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.isActive}
+                  onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
+                  style={{ marginRight: '0.5rem' }}
+                />
+                Active
+              </label>
             </div>
             
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Accreditation</label>
-              <input
-                type="text"
-                name="accreditation"
-                value={universityForm.accreditation}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="A+"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-            </div>
-            
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Street</label>
-              <input
-                type="text"
-                name="address.street"
-                value={universityForm.address.street}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="Street Address"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-            </div>
-            
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>City</label>
-              <input
-                type="text"
-                name="address.city"
-                value={universityForm.address.city}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="City"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-            </div>
-            
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>State</label>
-              <input
-                type="text"
-                name="address.state"
-                value={universityForm.address.state}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="State"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-            </div>
-            
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Country</label>
-              <input
-                type="text"
-                name="address.country"
-                value={universityForm.address.country}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="Country"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-            </div>
-            
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Pincode</label>
-              <input
-                type="text"
-                name="address.pincode"
-                value={universityForm.address.pincode}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="123456"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-            </div>
-            
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Phone</label>
-              <input
-                type="text"
-                name="contactInfo.phone"
-                value={universityForm.contactInfo.phone}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="1234567890"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-            </div>
-            
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Email</label>
-              <input
-                type="email"
-                name="contactInfo.email"
-                value={universityForm.contactInfo.email}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="admin@university.edu"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-            </div>
-            
-            <div>
-              <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>Website</label>
-              <input
-                type="url"
-                name="contactInfo.website"
-                value={universityForm.contactInfo.website}
-                onChange={handleChange}
-                className="glass-input"
-                placeholder="https://university.edu"
-                style={{ width: '100%', padding: '0.5rem' }}
-              />
-            </div>
-            
-            <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1rem' }}>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="glass-button"
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="glass-button"
-                style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}
-              >
-                {loading ? 'Saving...' : editingId ? 'Update' : 'Create'}
-              </button>
-            </div>
+            <button type="submit" className="glass-button">
+              Save University
+            </button>
           </form>
-        </motion.div>
-      )}
-
-      <GlassCard className="p-6">
-        <h3 style={{ color: 'white', margin: '0 0 1rem 0' }}>Universities</h3>
-        
-        {loading && (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-          </div>
-        )}
-        
-        {!loading && universities.length === 0 && (
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center', 
-            padding: '3rem',
-            background: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '12px',
-            border: '1px solid rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(10px)',
-            margin: '1rem 0'
-          }}>
-            <div style={{ 
-              textAlign: 'center', 
-              color: 'rgba(255,255,255,0.7)',
-              padding: '2rem',
-              background: 'rgba(0, 0, 0, 0.2)',
-              borderRadius: '8px'
-            }}>
-              <h3 style={{ margin: '0 0 0.5rem 0' }}>No universities created yet</h3>
-              <p style={{ margin: 0 }}>Click "Add University" to create your first university</p>
-            </div>
-          </div>
-        )}
-        
-        {!loading && universities.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
-            {universities.map((university) => (
-              <motion.div
-                key={university._id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="glass-card"
-                style={{ padding: '1.5rem' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                  <div>
-                    <h3 style={{ color: 'white', margin: 0, marginBottom: '0.25rem' }}>{university.name}</h3>
-                    <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>
-                      Code: {university.code}
-                    </div>
-                  </div>
-                  <div style={{
-                    padding: '0.25rem 0.75rem',
-                    borderRadius: '12px',
-                    fontSize: '0.75rem',
-                    background: university.isActive ? 'rgba(76, 209, 55, 0.2)' : 'rgba(255, 107, 107, 0.2)',
-                    color: university.isActive ? '#4cd137' : '#ff6b6b'
-                  }}>
-                    {university.isActive ? 'Active' : 'Inactive'}
-                  </div>
-                </div>
-
-                <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                  {university.address?.city && <div>📍 {university.address.city}, {university.address.state}</div>}
-                  {university.contactInfo?.phone && <div>📞 {university.contactInfo.phone}</div>}
-                  {university.contactInfo?.email && <div>📧 {university.contactInfo.email}</div>}
-                  {university.establishedYear && <div>📅 Est. {university.establishedYear}</div>}
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button
+        </GlassCard>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+          {universities.map(university => (
+            <GlassCard key={university._id}>
+              <h3 style={{ color: 'white', marginBottom: '0.5rem' }}>{university.name}</h3>
+              <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem' }}>
+                Code: {university.code}
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.8)', marginBottom: '0.5rem' }}>
+                {university.address}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                <span style={{ color: university.isActive ? '#4CAF50' : '#f44336' }}>
+                  {university.isActive ? 'Active' : 'Inactive'}
+                </span>
+                <div>
+                  <button 
+                    className="glass-button glass-button-secondary"
                     onClick={() => handleEdit(university)}
-                    className="glass-button"
-                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(59, 130, 246, 0.2)' }}
+                    style={{ marginRight: '0.5rem' }}
                   >
                     Edit
                   </button>
-                  <button
+                  <button 
+                    className="glass-button glass-button-danger"
                     onClick={() => handleDelete(university._id)}
-                    className="glass-button"
-                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem', background: 'rgba(255, 107, 107, 0.2)' }}
                   >
                     Delete
                   </button>
                 </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </GlassCard>
+              </div>
+            </GlassCard>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

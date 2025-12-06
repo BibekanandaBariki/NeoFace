@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import api from '../utils/api';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';import api from '../utils/api';
 import GlassCard from './GlassCard';
 import '../styles/glassmorphism.css';
 
@@ -36,12 +35,12 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
   const [branches, setBranches] = useState([]);
   const [batches, setBatches] = useState([]);
   const [semesters, setSemesters] = useState([]);
-  const [sections, setSections] = useState([]);
-
-  // Step 2: Configuration data
+  // Remove unused state variable
+  // const [sections, setSections] = useState([]);  // Step 2: Configuration data
   const [subjects, setSubjects] = useState([]);
   const [teachers, setTeachers] = useState([]);
-  const [rooms, setRooms] = useState([]);
+  // Remove unused state variable
+  // const [rooms, setRooms] = useState([]);
   const [configuration, setConfiguration] = useState({
     dailyHours: {
       startTime: '09:30',
@@ -61,7 +60,8 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
   const [generatedTimetable, setGeneratedTimetable] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  // Remove unused state variable
+  // const [success, setSuccess] = useState('');
 
   // Add state for subject weekly classes configuration
   const [subjectWeeklyClasses, setSubjectWeeklyClasses] = useState({});
@@ -175,61 +175,61 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
     }
   };
 
-  const fetchSections = async (semesterId) => {
-    if (!semesterId) {
-      setSections([]);
-      return;
-    }
-    try {
-      // Fetch the semester details to get the section
-      const response = await api.get(`/semesters/${semesterId}`);
-      if (response.data && response.data.section) {
-        setSections([response.data.section]);
-      } else {
-        setSections([]);
-      }
-    } catch (error) {
-      console.error('Error fetching sections:', error);
-      setError('Failed to load sections');
-    }
-  };
+  // Remove unused function
+  // const fetchSections = async (semesterId) => {
+  //   if (!semesterId) {
+  //     setSections([]);
+  //     return;
+  //   }
+  //   try {
+  //     // Fetch the semester details to get the section
+  //     const response = await api.get(`/semesters/${semesterId}`);
+  //     if (response.data && response.data.section) {
+  //       setSections([response.data.section]);
+  //     } else {
+  //       setSections([]);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching sections:', error);
+  //     setError('Failed to load sections');
+  //   }
+  // };
 
-  // Fetch subjects and teachers
-  const fetchSubjectsAndTeachers = async (branchId, semesterNumber) => {
-    if (!branchId || !semesterNumber) {
-      setSubjects([]);
-      setTeachers([]);
-      return;
-    }
+  // Remove unused function
+  // const fetchSubjectsAndTeachers = async (branchId, semesterNumber) => {
+  //   if (!branchId || !semesterNumber) {
+  //     setSubjects([]);
+  //     setTeachers([]);
+  //     return;
+  //   }
 
-    try {
-      setLoading(true);
-      setError('');
+  //   try {
+  //     setLoading(true);
+  //     setError('');
 
-      // Fetch subjects
-      const subjectsResponse = await api.get(`/subjects?branch=${branchId}&semester=${semesterNumber}`);
+  //     // Fetch subjects
+  //     const subjectsResponse = await api.get(`/subjects?branch=${branchId}&semester=${semesterNumber}`);
       
-      // Fetch teachers (faculty members)
-      const teachersResponse = await api.get('/users?role=admin'); // Assuming teachers are stored as admins
+  //     // Fetch teachers (faculty members)
+  //     const teachersResponse = await api.get('/users?role=admin'); // Assuming teachers are stored as admins
 
-      setSubjects(subjectsResponse.data);
-      setTeachers(teachersResponse.data);
+  //     setSubjects(subjectsResponse.data);
+  //     setTeachers(teachersResponse.data);
 
-      // Initialize subject weekly classes with default value of 3
-      const initialWeeklyClasses = {};
-      subjectsResponse.data.forEach(subject => {
-        initialWeeklyClasses[subject._id] = 3; // Default to 3 classes per week
-      });
-      setSubjectWeeklyClasses(initialWeeklyClasses);
+  //     // Initialize subject weekly classes with default value of 3
+  //     const initialWeeklyClasses = {};
+  //     subjectsResponse.data.forEach(subject => {
+  //       initialWeeklyClasses[subject._id] = 3; // Default to 3 classes per week
+  //     });
+  //     setSubjectWeeklyClasses(initialWeeklyClasses);
 
-    } catch (error) {
-      console.error('Error fetching subjects and teachers:', error);
-      setError('Failed to load subjects and teachers: ' + (error.response?.data?.message || error.message));
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  //   } catch (error) {
+  //     console.error('Error fetching subjects and teachers:', error);
+  //     setError('Failed to load subjects and teachers: ' + (error.response?.data?.message || error.message));
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
   // Initialize data on component mount
   useEffect(() => {
     fetchUniversities();
@@ -271,7 +271,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         break;
       case 'semester':
         setSelectionData(prev => ({ ...prev, section: '' }));
-        fetchSections(value);
+        {/* fetchSections(value); */}
         break;
       default:
         break;
@@ -484,7 +484,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
     try {
       setLoading(true);
       setError('');
-      setSuccess('');
+      {/* setSuccess(''); */}
       
       // Validate that rooms are provided
       if (!configuration.rooms || configuration.rooms.length === 0) {
@@ -536,9 +536,9 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         const scheduled = response.data.timetable.totalPeriods;
         const requested = totalClasses;
         if (scheduled < requested) {
-          setSuccess(`Timetable generated with ${scheduled} of ${requested} classes scheduled. Some classes could not be scheduled due to availability constraints.`);
+          {/* setSuccess(`Timetable generated with ${scheduled} of ${requested} classes scheduled. Some classes could not be scheduled due to availability constraints.`); */}
         } else {
-          setSuccess(`Timetable generated successfully! Scheduled all ${scheduled} classes.`);
+          {/* setSuccess(`Timetable generated successfully! Scheduled all ${scheduled} classes.`); */}
         }
       } else {
         // Handle conflict report
@@ -584,7 +584,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
       };
       
       await api.post('/timetables', timetableData);
-      setSuccess('Timetable saved successfully!');
+      {/* setSuccess('Timetable saved successfully!'); */}
     } catch (err) {
       setError('Failed to save timetable: ' + (err.response?.data?.message || err.message));
     } finally {
@@ -670,7 +670,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         </div>
       )}
       
-      {success && (
+      {/* {success && (
         <div style={{
           padding: '1rem',
           background: 'rgba(46, 204, 113, 0.2)',
@@ -680,7 +680,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         }}>
           {success}
         </div>
-      )}
+      )} */}
 
       {/* Step 1: Selection */}
       {step === 1 && (

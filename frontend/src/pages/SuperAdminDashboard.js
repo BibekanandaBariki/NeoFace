@@ -6,7 +6,6 @@ import GlassCard from '../components/GlassCard';
 import Analytics3D from '../components/Analytics3D';
 import AttendanceCharts from '../components/AttendanceCharts';
 import HeatmapCalendar from '../components/HeatmapCalendar';
-import FaceRecognitionCapture from '../components/FaceRecognitionCapture';
 import WebcamCapture from '../components/WebcamCapture';
 import SemesterManagement from '../components/SemesterManagement';
 import TimetableManagement from '../components/TimetableManagement';
@@ -36,10 +35,20 @@ const SuperAdminDashboard = () => {
   });
   const [students, setStudents] = useState([]);
   const [admins, setAdmins] = useState([]);
-  const [subjects, setSubjects] = useState([]);
-  const [timetable, setTimetable] = useState({});
+
+  // Add missing state variables
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [showFaceUpdateModal, setShowFaceUpdateModal] = useState(false);
+  const [editUserData, setEditUserData] = useState({});
+  const [editStudentData, setEditStudentData] = useState({});
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showEditStudentModal, setShowEditStudentModal] = useState(false);
   const [analytics, setAnalytics] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   // Form states
   const [newAdmin, setNewAdmin] = useState({
@@ -60,37 +69,6 @@ const SuperAdminDashboard = () => {
     semester: '',
     year: new Date().getFullYear()
   });
-  // Add back the used state variables
-  const [newSubject, setNewSubject] = useState({
-    code: '',
-    name: '',
-    department: '',
-    section: '',
-    semester: '',
-    credits: 3,
-    faculty: '',
-    timetable: []
-  });
-  const [timetableSlot, setTimetableSlot] = useState({
-    day: 'Monday',
-    startTime: '09:00',
-    endTime: '10:00',
-    room: ''
-  });
-  const [editingUser, setEditingUser] = useState(null);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [editingStudent, setEditingStudent] = useState(null);
-  const [showFaceUpdateModal, setShowFaceUpdateModal] = useState(false);
-  const [showEditUserModal, setShowEditUserModal] = useState(false);
-  const [showEditStudentModal, setShowEditStudentModal] = useState(false);
-  const [editUserData, setEditUserData] = useState({});
-  const [editStudentData, setEditStudentData] = useState({});
-  const [newPassword, setNewPassword] = useState('');
-  // Remove unused state variables
-  // const [selectedSubject, setSelectedSubject] = useState(null);
-  // const [showAddSubject, setShowAddSubject] = useState(false);
-  const [showAddAdmin, setShowAddAdmin] = useState(false);
-  const [showAddStudent, setShowAddStudent] = useState(false);
 
   // Add universities and campuses to state
   const [universities, setUniversities] = useState([]);
@@ -98,9 +76,6 @@ const SuperAdminDashboard = () => {
   const [branches, setBranches] = useState([]);
   const [schools, setSchools] = useState([]);
   const [programs, setPrograms] = useState([]);
-  // Remove unused state variables
-  // const [courses, setCourses] = useState([]);
-  // const [batches, setBatches] = useState([]);
 
   // Fetch universities and campuses
   const fetchUniversities = async () => {
@@ -149,27 +124,6 @@ const SuperAdminDashboard = () => {
     }
   };
 
-  // Remove unused functions
-  /*
-  const fetchCourses = async () => {
-    try {
-      const response = await api.get('/courses');
-      setCourses(response.data);
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-    }
-  };
-
-  const fetchBatches = async () => {
-    try {
-      const response = await api.get('/batches');
-      setBatches(response.data);
-    } catch (error) {
-      console.error('Error fetching batches:', error);
-    }
-  };
-  */
-
   useEffect(() => {
     fetchDashboardData();
     fetchUniversities();
@@ -177,8 +131,6 @@ const SuperAdminDashboard = () => {
     fetchBranches();
     fetchSchools();
     fetchPrograms();
-    // fetchCourses();
-    // fetchBatches();
 
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
@@ -186,28 +138,13 @@ const SuperAdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      setLoading(true);
-
       // Fetch all data in parallel
       const [
         studentsRes,
-        adminsRes,
-        subjectsRes,
-        // Remove unused variable
-        // timetableRes,
-        analyticsRes,
-        universitiesRes,
-        campusesRes,
-        branchesRes
+        adminsRes
       ] = await Promise.all([
         api.get('/students'),
-        api.get('/users?role=admin,campusadmin,hod'),
-        api.get('/subjects'),
-        // api.get('/timetables'),
-        api.get('/analytics/overview'),
-        api.get('/universities?isActive=true'),
-        api.get('/campus?isActive=true'),
-        api.get('/branches')
+        api.get('/users?role=admin,campusadmin,hod')
       ]);
 
       const studentsData = studentsRes.data;
@@ -215,24 +152,14 @@ const SuperAdminDashboard = () => {
 
       setStats({
         totalStudents: studentsData.length,
-        totalAdmins: adminsData.length,
-        totalSubjects: subjectsRes.data.length,
-        pendingRegistrations: studentsData.filter(s => s.registrationStatus === 'pending').length,
-        totalAttendance: analyticsRes.data?.attendance || 0
+        totalAdmins: adminsData.length
       });
 
       setStudents(studentsData);
       setAdmins(adminsData);
-      setSubjects(subjectsRes.data);
-      setAnalytics(analyticsRes.data);
-      setUniversities(universitiesRes.data);
-      setCampuses(campusesRes.data);
-      setBranches(branchesRes.data);
 
     } catch (error) {
       console.error('Fetch error:', error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -317,96 +244,6 @@ const SuperAdminDashboard = () => {
       alert(error.response?.data?.message || 'Failed to create student');
     }
   };
-
-  // Remove unused functions
-  /*
-  const handleCreateSubject = async (e) => {
-    e.preventDefault();
-    try {
-      if (!newSubject.faculty) {
-        alert('Please select a faculty/admin for this subject');
-        return;
-      }
-
-      // First create subject
-      const subjectRes = await api.post('/subjects', {
-        ...newSubject
-      });
-
-      // If timetable slots exist, update timetable
-      if (newSubject.timetable.length > 0) {
-        await api.put(`/timetables/${subjectRes.data._id}`, {
-          timetable: newSubject.timetable
-        });
-      }
-
-      setShowAddSubject(false);
-      setNewSubject({
-        code: '',
-        name: '',
-        department: '',
-        section: '',
-        semester: '',
-        credits: 3,
-        faculty: '',
-        timetable: []
-      });
-      setTimetableSlot({ day: 'Monday', startTime: '09:00', endTime: '10:00', room: '' });
-      fetchDashboardData();
-      alert('Subject created successfully!');
-    } catch (error) {
-      alert(error.response?.data?.message || 'Failed to create subject');
-    }
-  };
-
-  const handleAddTimetableSlot = () => {
-    setNewSubject({
-      ...newSubject,
-      timetable: [...newSubject.timetable, { ...timetableSlot }]
-    });
-    setTimetableSlot({ day: 'Monday', startTime: '09:00', endTime: '10:00', room: '' });
-  };
-
-  const handleRemoveTimetableSlot = (index) => {
-    setNewSubject({
-      ...newSubject,
-      timetable: newSubject.timetable.filter((_, i) => i !== index)
-    });
-  };
-
-  const handleMarkAttendance = async (studentId, subjectId, date, status = 'present') => {
-    try {
-      await api.post('/attendance/manual', {
-        studentId,
-        subjectId,
-        date,
-        status
-      });
-      fetchDashboardData();
-      alert('Attendance marked successfully!');
-    } catch (error) {
-      alert(error.response?.data?.message || 'Failed to mark attendance');
-    }
-  };
-
-  const handleApproveRegistration = async (studentId) => {
-    try {
-      await api.post(`/face/approve/${studentId}`);
-      fetchDashboardData();
-    } catch (error) {
-      alert('Failed to approve registration');
-    }
-  };
-
-  const handleRejectRegistration = async (studentId) => {
-    try {
-      await api.post(`/face/reject/${studentId}`);
-      fetchDashboardData();
-    } catch (error) {
-      alert('Failed to reject registration');
-    }
-  };
-  */
 
   const handleDelete = async (type, id) => {
     if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
@@ -1104,7 +941,7 @@ const SuperAdminDashboard = () => {
         )}
 
         {/* Timetable Tab (old) */}
-        {activeTab === 'timetable' && (
+        {/* {activeTab === 'timetable' && (
           <GlassCard>
             <h2 style={{ color: 'white', marginBottom: '1rem' }}>Weekly Timetable</h2>
             <div style={{ display: 'grid', gap: '1rem' }}>
@@ -1156,7 +993,7 @@ const SuperAdminDashboard = () => {
               ))}
             </div>
           </GlassCard>
-        )}
+        )} */}
 
         {/* Analytics Tab */}
         {activeTab === 'analytics' && analytics && (

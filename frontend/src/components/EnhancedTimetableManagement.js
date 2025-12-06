@@ -194,7 +194,27 @@ const EnhancedTimetableManagement = () => {
               <select
                 className="glass-input"
                 value={slotForm.semester}
-                onChange={(e) => handleSemesterChange(e.target.value)}
+                onChange={(e) => {
+                  const semesterId = e.target.value;
+                  setSlotForm({
+                    ...slotForm,
+                    semester: semesterId,
+                    // Reset dependent fields
+                    subjectId: '',
+                    branch: '',
+                    section: ''
+                  });
+                  
+                  // Find the selected semester to get branch and section info
+                  const selectedSemester = semesters.find(sem => sem._id === semesterId);
+                  if (selectedSemester) {
+                    setSlotForm(prev => ({
+                      ...prev,
+                      branch: selectedSemester.branch || '',
+                      section: selectedSemester.section || ''
+                    }));
+                  }
+                }}
                 required
               >
                 <option value="">Choose Semester & Section</option>
