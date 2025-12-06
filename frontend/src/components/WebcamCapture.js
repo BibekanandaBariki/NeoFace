@@ -41,9 +41,20 @@ const WebcamCapture = ({ onComplete, isUpdate = false }) => {
     try {
       if (isUpdate) {
         // For face update, just pass frames to callback without API call
-        setMessage('Frames captured successfully!');
+        // Validate frames are valid base64 images
+        const validFrames = capturedFrames.filter(frame => 
+          frame && frame.startsWith('data:image') && frame.length > 100
+        );
+        
+        if (validFrames.length < 5) {
+          setMessage(`Warning: Only ${validFrames.length} valid frames captured. Please try again.`);
+          setCapturing(false);
+          return;
+        }
+        
+        setMessage('Frames captured successfully! Processing...');
         setTimeout(() => {
-          onComplete(capturedFrames);
+          onComplete(validFrames);
         }, 1000);
       } else {
         // Normal registration flow

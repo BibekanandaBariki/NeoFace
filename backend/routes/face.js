@@ -195,11 +195,20 @@ router.put('/update/:studentId', auth, authorize('superadmin'), async (req, res)
     }
 
     // Generate new embedding
+    console.log(`Updating face for student ${studentId} with ${frames.length} frames`);
+    console.log(`First frame length: ${frames[0]?.length || 0} chars`);
+    
     const embedding = await faceServiceWithMonitoring.generateEmbedding(imageData, frames);
 
     if (!embedding) {
-      return res.status(400).json({ message: 'Face detection failed. Please ensure face is clearly visible.' });
+      console.error(`Face detection failed for student ${studentId}. Check Python service connection and image quality.`);
+      return res.status(400).json({ 
+        message: 'Face detection failed. Please ensure face is clearly visible and well-lit. Check that the Python face service is running.',
+        detail: 'No face detected in any of the captured frames. Please try again with better lighting and ensure your face is clearly visible.'
+      });
     }
+    
+    console.log(`Successfully generated embedding for student ${studentId}. Embedding dimension: ${embedding.length}`);
 
     // Update student record
     student.faceEmbedding = embedding;

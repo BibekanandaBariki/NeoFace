@@ -44,6 +44,8 @@ const SuperAdminDashboard = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [showFaceUpdateModal, setShowFaceUpdateModal] = useState(false);
+  const [showStudentPasswordModal, setShowStudentPasswordModal] = useState(false);
+  const [studentNewPassword, setStudentNewPassword] = useState('');
   const [editUserData, setEditUserData] = useState({});
   const [editStudentData, setEditStudentData] = useState({});
   const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -297,18 +299,53 @@ const SuperAdminDashboard = () => {
     }
 
     try {
-      await api.put(`/face/update/${editingStudent._id}`, {
+      console.log('Sending face update request with', frames.length, 'frames');
+      console.log('First frame preview:', frames[0]?.substring(0, 100));
+      
+      const response = await api.put(`/face/update/${editingStudent._id}`, {
         imageData: frames[0],
         frames: frames
       });
+      
+      console.log('Face update response:', response.data);
       alert('Face data updated successfully!');
       setShowFaceUpdateModal(false);
       setEditingStudent(null);
       fetchDashboardData();
     } catch (error) {
-      alert(error.response?.data?.message || 'Failed to update face data');
+      console.error('Face update error:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.message || error.response?.data?.detail || error.message || 'Failed to update face data';
+      alert(`Face update failed: ${errorMessage}`);
       setShowFaceUpdateModal(false);
       setEditingStudent(null);
+    }
+  };
+
+  const handleChangeStudentPassword = async (e) => {
+    e.preventDefault();
+    if (!editingStudent || !studentNewPassword || studentNewPassword.length < 6) {
+      alert('Password must be at least 6 characters');
+      return;
+    }
+
+    try {
+      // Get the user ID from the student record
+      const userId = editingStudent.userId || editingStudent.user?._id;
+      if (!userId) {
+        alert('Cannot find user ID for this student');
+        return;
+      }
+
+      await api.put(`/users/${userId}/password`, {
+        newPassword: studentNewPassword
+      });
+      alert('Student password changed successfully!');
+      setShowStudentPasswordModal(false);
+      setEditingStudent(null);
+      setStudentNewPassword('');
+      fetchDashboardData();
+    } catch (error) {
+      alert(error.response?.data?.message || 'Failed to change student password');
     }
   };
 
@@ -904,6 +941,20 @@ const SuperAdminDashboard = () => {
                         Update Face
                       </button>
                       <button
+                        onClick={() => {
+                          setEditingStudent(student);
+                          setShowStudentPasswordModal(true);
+                        }}
+                        className="glass-button"
+                        style={{
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.85rem',
+                          background: 'rgba(147, 51, 234, 0.3)'
+                        }}
+                      >
+                        Change Password
+                      </button>
+                      <button
                         onClick={() => handleDelete('students', student._id)}
                         className="glass-button"
                         style={{
@@ -1113,6 +1164,82 @@ const SuperAdminDashboard = () => {
                 <button type="submit" className="glass-button" style={{ width: '100%' }}>
                   Update Password
                 </button>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {/* Student Password Change Modal */}
+        {showStudentPasswordModal && editingStudent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.8)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 1000,
+              padding: '2rem'
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="glass-card"
+              style={{ maxWidth: '500px', width: '100%' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h2 style={{ color: 'white' }}>Change Password for {editingStudent.name}</h2>
+                <button
+                  onClick={() => {
+                    setShowStudentPasswordModal(false);
+                    setEditingStudent(null);
+                    setStudentNewPassword('');
+                  }}
+                  className="glass-button glass-button-secondary"
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  Close
+                </button>
+              </div>
+              <form onSubmit={handleChangeStudentPassword}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ color: 'white', display: 'block', marginBottom: '0.5rem' }}>
+                    New Password (minimum 6 characters)
+                  </label>
+                  <input
+                    type="password"
+                    className="glass-input"
+                    value={studentNewPassword}
+                    onChange={(e) => setStudentNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    required
+                    minLength={6}
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowStudentPasswordModal(false);
+                      setEditingStudent(null);
+                      setStudentNewPassword('');
+                    }}
+                    className="glass-button glass-button-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="glass-button">
+                    Change Password
+                  </button>
+                </div>
               </form>
             </motion.div>
           </motion.div>
