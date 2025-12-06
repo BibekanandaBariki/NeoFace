@@ -6,7 +6,8 @@ const WeeklyTimetable = require('../models/WeeklyTimetable');
  */
 class TimetableGenerator {
   constructor() {
-    this.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    // Default to all 7 days of the week (excluding Sunday as off day by default)
+    this.days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     this.timeSlots = [];
     this.rooms = [];
     this.teacherAvailability = [];
@@ -14,6 +15,7 @@ class TimetableGenerator {
     this.subjects = [];
     this.studentGroups = [];
     this.scheduledAssignments = []; // Track all scheduled assignments to check conflicts
+    this.subjectWeeklyClasses = {}; // Store subject weekly classes from frontend
   }
 
   /**
@@ -26,11 +28,21 @@ class TimetableGenerator {
       teacherAvailability,
       roomAvailability,
       rooms,
-      days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+      days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      offDay,
+      subjectWeeklyClasses = {} // Accept subjectWeeklyClasses from frontend
     } = config;
 
-    // Set working days
-    this.days = days;
+    // Set working days - exclude offDay if specified, otherwise use all 7 days
+    if (offDay) {
+      const allDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      this.days = allDays.filter(day => day !== offDay);
+    } else {
+      this.days = days.length > 0 ? days : ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    }
+
+    // Store subjectWeeklyClasses for use in generation
+    this.subjectWeeklyClasses = subjectWeeklyClasses;
 
     // Generate time slots based on daily hours and breaks
     this.generateTimeSlots(dailyHours, breaks);
@@ -96,46 +108,88 @@ class TimetableGenerator {
 
   /**
    * Check if a teacher is available at a specific time slot
+   * Logic: If no unavailability specified for a day, teacher is available for full college hours
+   * If unavailability specified, check if time slot conflicts with unavailable periods
    */
   isTeacherAvailable(teacherId, day, startTime, endTime) {
-    // If no availability constraints, teacher is available during college hours
+    // If no availability constraints at all, teacher is available during college hours
     if (!this.teacherAvailability || this.teacherAvailability.length === 0) {
       return true;
     }
 
-    // Find all availability entries for this specific teacher
+    // Find all unavailability entries for this specific teacher
     const teacherEntries = this.teacherAvailability.filter(entry => 
-      entry.teacherId === teacherId
+      entry.teacherId === teacherId || entry.teacherId?.toString() === teacherId?.toString()
     );
 
-    // If this teacher has no specific availability entries, they're available during college hours
+    // If this teacher has no specific unavailability entries, they're available during college hours
     if (teacherEntries.length === 0) {
       return true;
     }
 
-    // Find availability entries for this teacher on this specific day
+    // Find unavailability entries for this teacher on this specific day
     const dayEntries = teacherEntries.filter(entry => entry.day === day);
 
-    // If no availability specified for this day, teacher is NOT available
+    // If no unavailability specified for this day, teacher is available (FULL DAY)
     if (dayEntries.length === 0) {
-      console.log(`Teacher ${teacherId} is not available on ${day} (no availability specified for this day)`);
-      return false;
+      return true;
     }
 
-    // Check if the time slot falls within any of the teacher's available periods
-    const isAvailable = dayEntries.some(entry => 
-      startTime >= entry.startTime && endTime <= entry.endTime
-    );
+    // Check if the time slot conflicts with any unavailable period
+    // If time slot overlaps with unavailable period, teacher is NOT available
+    const isUnavailable = dayEntries.some(entry => {
+      const unavailableStart = this.convertTo24Hour(entry.startTime);
+      const unavailableEnd = this.convertTo24Hour(entry.endTime);
+      const slotStart = this.convertTo24Hour(startTime);
+      const slotEnd = this.convertTo24Hour(endTime);
+      
+      // Check for overlap: slot starts before unavailable ends AND slot ends after unavailable starts
+      return slotStart < unavailableEnd && slotEnd > unavailableStart;
+    });
   
+    const isAvailable = !isUnavailable;
+    
     if (!isAvailable) {
-      console.log(`Teacher ${teacherId} is not available on ${day} from ${startTime} to ${endTime}. Available periods:`, dayEntries);
+      console.log(`Teacher ${teacherId} is not available on ${day} from ${startTime} to ${endTime} (conflicts with unavailability)`);
     }
   
     return isAvailable;
   }
+  
+  /**
+   * Convert 12-hour format to 24-hour format for comparison
+   */
+  convertTo24Hour(time12) {
+    if (!time12) return null;
+    
+    // If already in 24-hour format (contains : and no AM/PM)
+    if (time12.includes(':') && !time12.match(/[AP]M/i)) {
+      return time12;
+    }
+    
+    // Handle 12-hour format with AM/PM
+    const match = time12.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if (match) {
+      let hours = parseInt(match[1]);
+      const minutes = match[2];
+      const ampm = match[3].toUpperCase();
+      
+      if (ampm === 'PM' && hours !== 12) {
+        hours += 12;
+      } else if (ampm === 'AM' && hours === 12) {
+        hours = 0;
+      }
+      
+      return `${hours.toString().padStart(2, '0')}:${minutes}`;
+    }
+    
+    return time12; // Return as-is if format not recognized
+  }
 
   /**
    * Check if a room is available at a specific time slot
+   * Logic: If no unavailability specified for a day, room is available for full college hours
+   * If unavailability specified, check if time slot conflicts with unavailable periods
    */
   isRoomAvailable(roomId, day, startTime, endTime) {
     // If no room availability constraints, room is available during college hours
@@ -143,30 +197,37 @@ class TimetableGenerator {
       return true;
     }
 
-    // Check if this room has specified any availability constraints
-    const roomHasSpecifiedConstraints = this.roomAvailability.some(entry => 
-      entry.roomId === roomId
+    // Find all unavailability entries for this room
+    const roomEntries = this.roomAvailability.filter(entry => 
+      entry.roomId === roomId || entry.roomId?.toString() === roomId?.toString()
     );
 
     // If room hasn't specified any constraints, it's available during college hours
-    if (!roomHasSpecifiedConstraints) {
+    if (roomEntries.length === 0) {
       return true;
     }
 
-    // Find all availability entries for this room on this specific day
-    const availablePeriods = this.roomAvailability.filter(entry => 
-      entry.roomId === roomId && entry.day === day
-    );
+    // Find unavailability entries for this room on this specific day
+    const dayEntries = roomEntries.filter(entry => entry.day === day);
 
-    // If no specific availability for this day, room is available during college hours
-    if (availablePeriods.length === 0) {
+    // If no unavailability specified for this day, room is available (FULL DAY)
+    if (dayEntries.length === 0) {
       return true;
     }
 
-    // Check if the time slot falls within any of the room's available periods
-    return availablePeriods.some(entry => 
-      startTime >= entry.startTime && endTime <= entry.endTime
-    );
+    // Check if the time slot conflicts with any unavailable period
+    // If time slot overlaps with unavailable period, room is NOT available
+    const isUnavailable = dayEntries.some(entry => {
+      const unavailableStart = this.convertTo24Hour(entry.startTime);
+      const unavailableEnd = this.convertTo24Hour(entry.endTime);
+      const slotStart = this.convertTo24Hour(startTime);
+      const slotEnd = this.convertTo24Hour(endTime);
+      
+      // Check for overlap: slot starts before unavailable ends AND slot ends after unavailable starts
+      return slotStart < unavailableEnd && slotEnd > unavailableStart;
+    });
+    
+    return !isUnavailable;
   }
 
   /**
@@ -203,9 +264,22 @@ class TimetableGenerator {
     }));
 
     // Create subject sessions (each subject needs multiple sessions per week)
+    // Use subjectWeeklyClasses from frontend if provided, otherwise use default
     const subjectSessions = [];
     this.subjects.forEach(subject => {
-      const requiredSessions = subject.weeklySessions || subject.credits || 3; // Default to 3 sessions
+      // Priority: subjectWeeklyClasses from frontend > subject.weeklySessions > subject.credits > 3
+      let requiredSessions = 3; // Default
+      
+      if (this.subjectWeeklyClasses && this.subjectWeeklyClasses[subject._id.toString()]) {
+        requiredSessions = parseInt(this.subjectWeeklyClasses[subject._id.toString()]) || 3;
+      } else if (subject.weeklySessions) {
+        requiredSessions = parseInt(subject.weeklySessions) || 3;
+      } else if (subject.credits) {
+        requiredSessions = parseInt(subject.credits) || 3;
+      }
+      
+      console.log(`Subject ${subject.code} requires ${requiredSessions} sessions per week`);
+      
       for (let i = 0; i < requiredSessions; i++) {
         subjectSessions.push({
           subjectId: subject._id,

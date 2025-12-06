@@ -612,7 +612,8 @@ router.post('/generate', auth, authorize('admin', 'superadmin'), async (req, res
       teacherAvailability,
       roomAvailability,
       rooms,
-      offDay
+      offDay,
+      subjectWeeklyClasses: subjectWeeklyClasses || {} // Pass subjectWeeklyClasses from frontend
     });
 
     // Generate the timetable

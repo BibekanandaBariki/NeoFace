@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import api from '../utils/api';
 import GlassCard from './GlassCard';
+import { convertTo12Hour, convertTo24Hour } from '../utils/timeFormat';
 import '../styles/glassmorphism.css';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -306,16 +307,33 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         });
         
         // Fetch subjects for this semester and section
-        const subjectsRes = await api.get(`/api/subjects?branch=${selectionData.branch}&semester=${semesterNumber}`);
+        // Use proper endpoint with ObjectId for branch
+        const branchId = selectionData.branch;
+        const subjectsRes = await api.get(`/subjects?branch=${branchId}&semester=${semesterNumber}`);
         console.log('Subjects response:', subjectsRes.data);
+        
+        if (!subjectsRes.data || subjectsRes.data.length === 0) {
+          setError(`No subjects found for this branch and semester. Please create subjects first.`);
+          setLoading(false);
+          return;
+        }
+        
         setSubjects(subjectsRes.data);
+        
+        // Initialize subjectWeeklyClasses with default values (3 classes per week)
+        const initialWeeklyClasses = {};
+        subjectsRes.data.forEach(subject => {
+          initialWeeklyClasses[subject._id] = subject.credits || 3; // Default to credits or 3
+        });
+        setSubjectWeeklyClasses(initialWeeklyClasses);
+        console.log('Initialized subject weekly classes:', initialWeeklyClasses);
         
         // Extract unique teachers from subjects
         const allTeachers = [];
         subjectsRes.data.forEach(subject => {
           if (subject.faculty && subject.faculty.length > 0) {
             subject.faculty.forEach(fac => {
-              if (fac.teacher && !allTeachers.find(t => t._id === fac.teacher._id)) {
+              if (fac.teacher && !allTeachers.find(t => t._id === fac.teacher._id || (t._id?.toString && t._id.toString() === fac.teacher._id?.toString()))) {
                 allTeachers.push(fac.teacher);
               }
             });
@@ -1050,7 +1068,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <div>
                 <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
-                  Start Time
+                  Start Time (24-hour format)
                 </label>
                 <input
                   type="time"
@@ -1065,10 +1083,13 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                     outline: 'none'
                   }}
                 />
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem' }}>
+                  {convertTo12Hour(configuration.dailyHours.startTime)} (12-hour format)
+                </div>
               </div>
               <div>
                 <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
-                  End Time
+                  End Time (24-hour format)
                 </label>
                 <input
                   type="time"
@@ -1083,6 +1104,9 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                     outline: 'none'
                   }}
                 />
+                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem' }}>
+                  {convertTo12Hour(configuration.dailyHours.endTime)} (12-hour format)
+                </div>
               </div>
             </div>
           </div>
@@ -1245,7 +1269,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
             ))}
           </div>
 
-          {/* Teacher Availability */}
+          {/* Teacher Unavailability */}
           <div style={{ marginBottom: '2rem' }}>
             <div style={{ 
               display: 'flex', 
@@ -1253,33 +1277,39 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
               alignItems: 'center',
               marginBottom: '1rem'
             }}>
-              <h3 style={{ color: 'white', margin: 0 }}>Teacher Availability</h3>
+              <div>
+                <h3 style={{ color: 'white', margin: 0, marginBottom: '0.5rem' }}>Teacher Unavailability Hours</h3>
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', margin: 0 }}>
+                  Specify when teachers are NOT available. If no unavailability is set for a day, teacher is available for full college hours.
+                </p>
+              </div>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleAddTeacherAvailability}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: 'rgba(52, 152, 219, 0.2)',
-                  border: '1px solid #3498db',
+                  background: 'rgba(231, 76, 60, 0.2)',
+                  border: '1px solid #e74c3c',
                   borderRadius: '8px',
-                  color: '#3498db',
+                  color: '#e74c3c',
                   cursor: 'pointer'
                 }}
               >
-                Add Availability
+                Add Unavailability
               </motion.button>
             </div>
             
             {configuration.teacherAvailability.length === 0 ? (
               <div style={{ 
                 padding: '1rem', 
-                background: 'rgba(255,255,255,0.05)', 
+                background: 'rgba(46, 204, 113, 0.1)', 
+                border: '1px solid rgba(46, 204, 113, 0.3)',
                 borderRadius: '8px',
-                color: 'rgba(255,255,255,0.6)',
+                color: 'rgba(255,255,255,0.8)',
                 textAlign: 'center'
               }}>
-                No teacher availability constraints set. Teachers will be considered available during college hours by default.
+                ✓ No teacher unavailability set. All teachers will be available during full college hours on all working days.
               </div>
             ) : (
               <div style={{ 
@@ -1344,7 +1374,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                     
                     <div>
                       <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
-                        Start Time
+                        Unavailable From (12-hour)
                       </label>
                       <input
                         type="time"
@@ -1359,11 +1389,14 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                           outline: 'none'
                         }}
                       />
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem' }}>
+                        {convertTo12Hour(availability.startTime)}
+                      </div>
                     </div>
                     
                     <div>
                       <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
-                        End Time
+                        Unavailable Until (12-hour)
                       </label>
                       <input
                         type="time"
@@ -1378,6 +1411,9 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                           outline: 'none'
                         }}
                       />
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem' }}>
+                        {convertTo12Hour(availability.endTime)}
+                      </div>
                     </div>
                     
                     <motion.button
@@ -1514,7 +1550,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
             )}
           </div>
 
-          {/* Room Availability */}
+          {/* Room Unavailability */}
           <div style={{ marginBottom: '2rem' }}>
             <div style={{ 
               display: 'flex', 
@@ -1522,67 +1558,39 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
               alignItems: 'center',
               marginBottom: '1rem'
             }}>
-              <h3 style={{ color: 'white', margin: 0 }}>Room Availability</h3>
+              <div>
+                <h3 style={{ color: 'white', margin: 0, marginBottom: '0.5rem' }}>Room Unavailability Hours</h3>
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem', margin: 0 }}>
+                  Specify when rooms are NOT available. If no unavailability is set for a day, room is available for full college hours.
+                </p>
+              </div>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleAddRoomAvailability}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: 'rgba(155, 89, 182, 0.2)',
-                  border: '1px solid #9b59b6',
+                  background: 'rgba(231, 76, 60, 0.2)',
+                  border: '1px solid #e74c3c',
                   borderRadius: '8px',
-                  color: '#9b59b6',
+                  color: '#e74c3c',
                   cursor: 'pointer'
                 }}
               >
-                Add Room Availability
+                Add Unavailability
               </motion.button>
-            </div>
-            
-            <div style={{ 
-              padding: '1rem', 
-              background: 'rgba(52, 152, 219, 0.1)', 
-              borderRadius: '8px',
-              marginBottom: '1rem',
-              border: '1px solid rgba(52, 152, 219, 0.3)'
-            }}>
-              <h4 style={{ 
-                color: '#3498db', 
-                margin: '0 0 0.5rem 0',
-                fontSize: '1rem'
-              }}>
-                Availability Constraints
-              </h4>
-              <p style={{ 
-                color: 'rgba(255,255,255,0.8)', 
-                margin: 0,
-                fontSize: '0.9rem',
-                lineHeight: '1.4'
-              }}>
-                <strong>Teacher Availability:</strong> If no availability is set for a teacher, they will be considered available during college hours. 
-                Set specific availability to restrict when teachers can be scheduled.
-              </p>
-              <p style={{ 
-                color: 'rgba(255,255,255,0.8)', 
-                margin: '0.5rem 0 0 0',
-                fontSize: '0.9rem',
-                lineHeight: '1.4'
-              }}>
-                <strong>Room Availability:</strong> If no constraints are set, all rooms are considered available during college hours. 
-                Add unavailable periods to prevent rooms from being scheduled during maintenance or other activities.
-              </p>
             </div>
             
             {configuration.roomAvailability.length === 0 ? (
               <div style={{ 
                 padding: '1rem', 
-                background: 'rgba(255,255,255,0.05)', 
+                background: 'rgba(46, 204, 113, 0.1)', 
+                border: '1px solid rgba(46, 204, 113, 0.3)',
                 borderRadius: '8px',
-                color: 'rgba(255,255,255,0.6)',
+                color: 'rgba(255,255,255,0.8)',
                 textAlign: 'center'
               }}>
-                No room availability constraints set. All rooms will be considered available during college hours by default.
+                ✓ No room unavailability set. All rooms will be available during full college hours on all working days.
               </div>
             ) : (
               <div style={{ 
@@ -1639,7 +1647,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                           outline: 'none'
                         }}
                       >
-                        {DAYS.filter(day => day !== configuration.offDay).map(day => (
+                        {DAYS.map(day => (
                           <option key={day} value={day}>{day}</option>
                         ))}
                       </select>
@@ -1647,7 +1655,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                     
                     <div>
                       <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
-                        Start Time
+                        Unavailable From (12-hour)
                       </label>
                       <input
                         type="time"
@@ -1662,11 +1670,14 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                           outline: 'none'
                         }}
                       />
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem' }}>
+                        {convertTo12Hour(availability.startTime)}
+                      </div>
                     </div>
                     
                     <div>
                       <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', marginBottom: '0.5rem' }}>
-                        End Time
+                        Unavailable Until (12-hour)
                       </label>
                       <input
                         type="time"
@@ -1681,6 +1692,9 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                           outline: 'none'
                         }}
                       />
+                      <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', marginTop: '0.25rem' }}>
+                        {convertTo12Hour(availability.endTime)}
+                      </div>
                     </div>
                     
                     <motion.button
@@ -2001,7 +2015,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
                             <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '1rem', alignItems: 'center' }}>
                               <div>
                                 <div style={{ color: 'white', fontWeight: 'bold', fontSize: '1rem' }}>
-                                  {slot.startTime} - {slot.endTime}
+                                  {convertTo12Hour(slot.startTime)} - {convertTo12Hour(slot.endTime)}
                                 </div>
                                 <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>
                                   Period {slot.slotNumber}
