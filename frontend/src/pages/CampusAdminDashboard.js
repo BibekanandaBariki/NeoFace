@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../utils/api';
 import GlassCard from '../components/GlassCard';
 import BranchManagement from '../components/BranchManagement';
 import BatchManagement from '../components/BatchManagement';
@@ -9,7 +8,7 @@ import AdmitCardGeneration from '../components/AdmitCardGeneration';
 import '../styles/glassmorphism.css';
 
 const CampusAdminDashboard = () => {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState({
     totalBranches: 0,

@@ -11,10 +11,10 @@ const TeacherTimetableView = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (user?.id) {
+    if (user) {
       fetchTeacherTimetable();
     }
-  }, [user]);
+  }, [user, fetchTeacherTimetable]);
 
   const fetchTeacherTimetable = async () => {
     try {

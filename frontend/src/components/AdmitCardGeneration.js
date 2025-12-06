@@ -9,10 +9,8 @@ const AdmitCardGeneration = () => {
   const [programs, setPrograms] = useState([]);
   const [courses, setCourses] = useState([]);
   const [batches, setBatches] = useState([]);
-  const [semesters, setSemesters] = useState([]); // Remove unused state
-  // Remove unused state variables
-  // const [loading, setLoading] = useState(true);
-  // const [error, setError] = useState('');
+  const [semesters, setSemesters] = useState([]);
+  
   const [selectedFilters, setSelectedFilters] = useState({
     university: '',
     campus: '',
@@ -23,73 +21,39 @@ const AdmitCardGeneration = () => {
     semester: ''
   });
   const [admitCards, setAdmitCards] = useState([]);
-  // Remove unused state variables
-  // const [generated, setGenerated] = useState(false);
 
-  // Remove unused functions
-  // const fetchUniversities = async () => {
-  //   try {
-  //     const response = await api.get('/universities?isActive=true');
-  //     setUniversities(response.data);
-  //   } catch (error) {
-  //     console.error('Error fetching universities:', error);
-  //   }
-  // };
-
-  // const fetchCampuses = async () => {
-  //   try {
-  //     const response = await api.get('/campus?isActive=true');
-  //     setCampuses(response.data);
-  //   } catch (error) {
-  //     console.error('Error fetching campuses:', error);
-  //   }
-  // };
-
-  // const fetchSchools = async () => {
-  //   try {
-  //     const response = await api.get('/schools');
-  //     setSchools(response.data);
-  //   } catch (error) {
-  //     console.error('Error fetching schools:', error);
-  //   }
-  // };
-
-  // const fetchPrograms = async () => {
-  //   try {
-  //     const response = await api.get('/programs');
-  //     setPrograms(response.data);
-  //   } catch (error) {
-  //     console.error('Error fetching programs:', error);
-  //   }
-  // };
-
-  // const fetchCourses = async () => {
-  //   try {
-  //     const response = await api.get('/courses');
-  //     setCourses(response.data);
-  //   } catch (error) {
-  //     console.error('Error fetching courses:', error);
-  //   }
-  // };
-
-  // const fetchBatches = async () => {
-  //   try {
-  //     const response = await api.get('/batches');
-  //     setBatches(response.data);
-  //   } catch (error) {
-  //     console.error('Error fetching batches:', error);
-  //   }
-  // };
-
-  // Remove unused useEffect
-  // useEffect(() => {
-  //   fetchUniversities();
-  //   fetchCampuses();
-  //   fetchSchools();
-  //   fetchPrograms();
-  //   fetchCourses();
-  //   fetchBatches();
-  // }, []);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [
+          universitiesRes,
+          campusesRes,
+          schoolsRes,
+          programsRes,
+          coursesRes,
+          batchesRes
+        ] = await Promise.all([
+          api.get('/universities?isActive=true'),
+          api.get('/campus?isActive=true'),
+          api.get('/schools'),
+          api.get('/programs'),
+          api.get('/courses'),
+          api.get('/batches')
+        ]);
+        
+        setUniversities(universitiesRes.data);
+        setCampuses(campusesRes.data);
+        setSchools(schoolsRes.data);
+        setPrograms(programsRes.data);
+        setCourses(coursesRes.data);
+        setBatches(batchesRes.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+    
+    fetchData();
+  }, []);
 
   const handleFilterChange = (field, value) => {
     setSelectedFilters(prev => ({
@@ -100,18 +64,10 @@ const AdmitCardGeneration = () => {
 
   const generateAdmitCards = async () => {
     try {
-      // Remove unused variables
-      // setLoading(true);
-      // setError('');
-      
       const response = await api.post('/admit-cards/generate', selectedFilters);
       setAdmitCards(response.data);
-      // setGenerated(true);
     } catch (error) {
-      // setError(error.response?.data?.message || 'Failed to generate admit cards');
       console.error('Error generating admit cards:', error);
-    } finally {
-      // setLoading(false);
     }
   };
 

@@ -141,10 +141,12 @@ const SuperAdminDashboard = () => {
       // Fetch all data in parallel
       const [
         studentsRes,
-        adminsRes
+        adminsRes,
+        analyticsRes // Add analytics fetch
       ] = await Promise.all([
         api.get('/students'),
-        api.get('/users?role=admin,campusadmin,hod')
+        api.get('/users?role=admin,campusadmin,hod'),
+        api.get('/analytics/overview') // Add analytics endpoint
       ]);
 
       const studentsData = studentsRes.data;
@@ -157,7 +159,7 @@ const SuperAdminDashboard = () => {
 
       setStudents(studentsData);
       setAdmins(adminsData);
-
+      setAnalytics(analyticsRes.data); // Set analytics data
     } catch (error) {
       console.error('Fetch error:', error);
     }

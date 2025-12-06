@@ -469,7 +469,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
       });
       setSubjectWeeklyClasses(initialClasses);
     }
-  }, [subjects]);
+  }, [subjects, subjectWeeklyClasses]);
 
   // Handle subject weekly class count change
   const handleSubjectClassCountChange = (subjectId, count) => {
@@ -484,7 +484,6 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
     try {
       setLoading(true);
       setError('');
-      {/* setSuccess(''); */}
       
       // Validate that rooms are provided
       if (!configuration.rooms || configuration.rooms.length === 0) {
@@ -537,10 +536,8 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         const requested = totalClasses;
         if (scheduled < requested) {
           {/* setSuccess(`Timetable generated with ${scheduled} of ${requested} classes scheduled. Some classes could not be scheduled due to availability constraints.`); */}
-        } else {
           {/* setSuccess(`Timetable generated successfully! Scheduled all ${scheduled} classes.`); */}
         }
-      } else {
         // Handle conflict report
         let errorMessage = response.data.message || 'Failed to generate timetable';
         if (response.data.issues && response.data.issues.length > 0) {
@@ -587,7 +584,6 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
       {/* setSuccess('Timetable saved successfully!'); */}
     } catch (err) {
       setError('Failed to save timetable: ' + (err.response?.data?.message || err.message));
-    } finally {
       setLoading(false);
     }
   };

@@ -14,7 +14,7 @@ const StudentAttendanceView = ({ studentId }) => {
     if (studentId) {
       fetchAttendanceData();
     }
-  }, [studentId]);
+  }, [studentId, fetchAttendanceData]);
 
   const fetchAttendanceData = async () => {
     try {

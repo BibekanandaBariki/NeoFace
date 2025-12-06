@@ -14,13 +14,13 @@ const StudentDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [subjects, setSubjects] = useState([]);
-  const [attendance, setAttendance] = useState([]);
+  const [attendance, setAttendance] = useState([]); // Add back attendance state
   const [timetable, setTimetable] = useState({});
   const [analytics, setAnalytics] = useState(null);
   const [showFaceRegister, setShowFaceRegister] = useState(false);
-  const [faceRegistered, setFaceRegistered] = useState(false);
+  const [faceRegistered, setFaceRegistered] = useState(false); // Add back faceRegistered state
   const [registrationStatus, setRegistrationStatus] = useState('not_registered');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Add back loading state
   const [studentInfo, setStudentInfo] = useState(null);
 
   useEffect(() => {
@@ -141,13 +141,12 @@ const StudentDashboard = () => {
       const analyticsRes = await api.get('/analytics/overview');
 
       setSubjects(subjectsRes.data);
-      setAttendance(attendanceRes.data);
+      setAttendance(attendanceRes.data); // This should work now
       setTimetable(timetableRes.data);
       setAnalytics(analyticsRes.data);
 
       console.log('Timetable data:', timetableRes.data);
 
-      const isFaceRegistered = userData.data.faceRegistered || false;
       let regStatus = userData.data.registrationStatus; // Can be null, 'pending', 'approved', or 'rejected'
       
       // Store student info for timetable (with proper IDs)
@@ -161,23 +160,18 @@ const StudentDashboard = () => {
       
       // Only show as registered if registrationStatus is 'approved' (backend logic ensures faceRegistered is true when approved)
       // The backend /api/auth/me already checks and sets faceRegistered correctly based on approval status
-      setFaceRegistered(regStatus === 'approved');
+      setFaceRegistered(regStatus === 'approved'); // This should work now
     } catch (error) {
       console.error('Fetch error:', error);
       // On error, default to not_registered so user can still try to register
       setRegistrationStatus('not_registered');
     } finally {
-      setLoading(false);
+      setLoading(false); // This should work now
     }
-  };
-
-  const handleAttendanceMarked = (newAttendanceRecord) => {
-    setAttendance(prev => [newAttendanceRecord, ...prev]);
   };
 
   const handleFaceRegistered = () => {
     setShowFaceRegister(false);
-    setFaceRegistered(true);
     fetchData();
   };
 
