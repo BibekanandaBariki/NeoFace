@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import api from '../utils/api';
 import GlassCard from '../components/GlassCard';
 import CampusManagement from '../components/CampusManagement';
 import SchoolManagement from '../components/SchoolManagement';
@@ -18,7 +17,6 @@ const UniversityAdminDashboard = () => {
     totalPrograms: 0,
     totalCourses: 0
   });
-  const [loading, setLoading] = useState(true);
 
   const tabs = ['overview', 'campus', 'schools', 'programs', 'courses'];
 
@@ -38,8 +36,6 @@ const UniversityAdminDashboard = () => {
       });
     } catch (error) {
       console.error('Fetch error:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

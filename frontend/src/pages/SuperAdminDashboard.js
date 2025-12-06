@@ -86,8 +86,9 @@ const SuperAdminDashboard = () => {
   const [editUserData, setEditUserData] = useState({});
   const [editStudentData, setEditStudentData] = useState({});
   const [newPassword, setNewPassword] = useState('');
-  const [selectedSubject, setSelectedSubject] = useState(null);
-  const [showAddSubject, setShowAddSubject] = useState(false);
+  // Remove unused state variables
+  // const [selectedSubject, setSelectedSubject] = useState(null);
+  // const [showAddSubject, setShowAddSubject] = useState(false);
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
 
@@ -97,8 +98,9 @@ const SuperAdminDashboard = () => {
   const [branches, setBranches] = useState([]);
   const [schools, setSchools] = useState([]);
   const [programs, setPrograms] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [batches, setBatches] = useState([]);
+  // Remove unused state variables
+  // const [courses, setCourses] = useState([]);
+  // const [batches, setBatches] = useState([]);
 
   // Fetch universities and campuses
   const fetchUniversities = async () => {
@@ -147,6 +149,8 @@ const SuperAdminDashboard = () => {
     }
   };
 
+  // Remove unused functions
+  /*
   const fetchCourses = async () => {
     try {
       const response = await api.get('/courses');
@@ -164,6 +168,7 @@ const SuperAdminDashboard = () => {
       console.error('Error fetching batches:', error);
     }
   };
+  */
 
   useEffect(() => {
     fetchDashboardData();
@@ -172,8 +177,8 @@ const SuperAdminDashboard = () => {
     fetchBranches();
     fetchSchools();
     fetchPrograms();
-    fetchCourses();
-    fetchBatches();
+    // fetchCourses();
+    // fetchBatches();
 
     const interval = setInterval(fetchDashboardData, 30000);
     return () => clearInterval(interval);
@@ -188,7 +193,8 @@ const SuperAdminDashboard = () => {
         studentsRes,
         adminsRes,
         subjectsRes,
-        timetableRes,
+        // Remove unused variable
+        // timetableRes,
         analyticsRes,
         universitiesRes,
         campusesRes,
@@ -197,7 +203,7 @@ const SuperAdminDashboard = () => {
         api.get('/students'),
         api.get('/users?role=admin,campusadmin,hod'),
         api.get('/subjects'),
-        api.get('/timetables'),
+        // api.get('/timetables'),
         api.get('/analytics/overview'),
         api.get('/universities?isActive=true'),
         api.get('/campus?isActive=true'),
@@ -294,18 +300,7 @@ const SuperAdminDashboard = () => {
 
       console.log('Creating student with data:', studentData);
 
-      const response = await api.post('/students', studentData);
-
-      console.log('Student created successfully:', response.data);
-
-      const loginInfo = `Student created successfully!
-
-Login Credentials:
-Email: ${studentData.email}
-Password: ${studentData.universityId}
-
-(Student should use University ID as password)`;
-      alert(loginInfo);
+      await api.post('/students', studentData);
       setShowAddStudent(false);
       setNewStudent({
         name: '',
@@ -317,28 +312,14 @@ Password: ${studentData.universityId}
         year: new Date().getFullYear()
       });
       fetchDashboardData();
+      alert('Student created successfully! Login credentials have been sent to their email.');
     } catch (error) {
-      console.error('Create student error:', error);
-      console.error('Error response:', error.response?.data);
-
-      let errorMessage = 'Failed to create student. Please check all fields.';
-
-      if (error.response?.data) {
-        if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
-          errorMessage = error.response.data.errors.map(e => e.msg || e.message).join(', ');
-        } else if (error.response.data.message) {
-          errorMessage = error.response.data.message;
-        } else if (error.response.data.error) {
-          errorMessage = error.response.data.error;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      alert(`Error: ${errorMessage}`);
+      alert(error.response?.data?.message || 'Failed to create student');
     }
   };
 
+  // Remove unused functions
+  /*
   const handleCreateSubject = async (e) => {
     e.preventDefault();
     try {
@@ -425,6 +406,7 @@ Password: ${studentData.universityId}
       alert('Failed to reject registration');
     }
   };
+  */
 
   const handleDelete = async (type, id) => {
     if (!window.confirm(`Are you sure you want to delete this ${type}?`)) return;
@@ -476,7 +458,7 @@ Password: ${studentData.universityId}
     }
 
     try {
-      const response = await api.put(`/face/update/${editingStudent._id}`, {
+      await api.put(`/face/update/${editingStudent._id}`, {
         imageData: frames[0],
         frames: frames
       });
