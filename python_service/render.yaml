@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: neoface-python-service
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app_advanced.py
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: PYTHON_VERSION
+        value: 3.10.12
+      - key: DEEPFACE_MODEL
+        value: Facenet
+      - key: DETECTOR_BACKEND
+        value: opencv
