@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import api from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -10,13 +10,7 @@ const TeacherTimetableView = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (user) {
-      fetchTeacherTimetable();
-    }
-  }, [user, fetchTeacherTimetable]);
-
-  const fetchTeacherTimetable = async () => {
+  const fetchTeacherTimetable = useCallback(async () => {
     try {
       setLoading(true);
       console.log('Fetching teacher timetable for user object:', user);
@@ -32,7 +26,13 @@ const TeacherTimetableView = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchTeacherTimetable();
+    }
+  }, [user, fetchTeacherTimetable]);
 
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const hasAnyClasses = Object.values(schedule).some(day => day && day.length > 0);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import api from '../utils/api';
 import '../styles/glassmorphism.css';
@@ -10,13 +10,7 @@ const StudentAttendanceView = ({ studentId }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (studentId) {
-      fetchAttendanceData();
-    }
-  }, [studentId, fetchAttendanceData]);
-
-  const fetchAttendanceData = async () => {
+  const fetchAttendanceData = useCallback(async () => {
     try {
       setLoading(true);
       const [summaryRes, dayWiseRes] = await Promise.all([
@@ -30,7 +24,13 @@ const StudentAttendanceView = ({ studentId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [studentId]);
+
+  useEffect(() => {
+    if (studentId) {
+      fetchAttendanceData();
+    }
+  }, [studentId, fetchAttendanceData]);
 
   const getAttendanceColor = (percentage) => {
     if (percentage >= 75) return '#4cd137';

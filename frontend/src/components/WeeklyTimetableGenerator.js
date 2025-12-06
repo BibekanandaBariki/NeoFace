@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';import api from '../utils/api';
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
+import api from '../utils/api';
 import GlassCard from './GlassCard';
 import '../styles/glassmorphism.css';
 
@@ -67,7 +68,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
   const [subjectWeeklyClasses, setSubjectWeeklyClasses] = useState({});
 
   // Fetch hierarchical data
-  const fetchUniversities = async () => {
+  const fetchUniversities = useCallback(async () => {
     try {
       const response = await api.get('/universities?isActive=true');
       setUniversities(response.data);
@@ -75,7 +76,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
       console.error('Error fetching universities:', error);
       setError('Failed to load universities');
     }
-  };
+  }, []);
 
   const fetchCampuses = async (universityId) => {
     if (!universityId) {
@@ -271,7 +272,7 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         break;
       case 'semester':
         setSelectionData(prev => ({ ...prev, section: '' }));
-        {/* fetchSections(value); */}
+        // fetchSections(value); // Uncomment when sections feature is implemented
         break;
       default:
         break;
@@ -511,13 +512,6 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
       const selectedSemester = semesters.find(s => s._id === selectionData.semester);
       const semesterNumber = selectedSemester ? selectedSemester.semesterNumber : selectionData.semester;
       
-      // Calculate total classes to be scheduled
-      let totalClasses = 0;
-      subjects.forEach(subject => {
-        const requiredClasses = subjectWeeklyClasses[subject._id] || 3;
-        totalClasses += requiredClasses;
-      });
-      
       // Prepare data for timetable generation
       const generationData = {
         university: selectionData.university,
@@ -539,8 +533,6 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
       
       if (response.data.success) {
         setGeneratedTimetable(response.data.timetable);
-        const scheduled = response.data.timetable.totalPeriods;
-        const requested = totalClasses;
         // Handle conflict report
         let errorMessage = response.data.message || 'Failed to generate timetable';
         if (response.data.issues && response.data.issues.length > 0) {
@@ -584,7 +576,8 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
       };
       
       await api.post('/timetables', timetableData);
-      {/* setSuccess('Timetable saved successfully!'); */}
+      // setSuccess('Timetable saved successfully!'); // Success state removed
+      setError(''); // Clear any previous errors
     } catch (err) {
       setError('Failed to save timetable: ' + (err.response?.data?.message || err.message));
       setLoading(false);

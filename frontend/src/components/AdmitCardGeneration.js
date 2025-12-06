@@ -31,14 +31,16 @@ const AdmitCardGeneration = () => {
           schoolsRes,
           programsRes,
           coursesRes,
-          batchesRes
+          batchesRes,
+          semestersRes
         ] = await Promise.all([
           api.get('/universities?isActive=true'),
           api.get('/campus?isActive=true'),
           api.get('/schools'),
           api.get('/programs'),
           api.get('/courses'),
-          api.get('/batches')
+          api.get('/batches'),
+          api.get('/semesters')
         ]);
         
         setUniversities(universitiesRes.data);
@@ -47,6 +49,7 @@ const AdmitCardGeneration = () => {
         setPrograms(programsRes.data);
         setCourses(coursesRes.data);
         setBatches(batchesRes.data);
+        setSemesters(semestersRes.data);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
