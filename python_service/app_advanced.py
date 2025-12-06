@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect
 import numpy as np
 import os
 import logging
@@ -175,6 +175,19 @@ class AdvancedFaceEmbedder:
 
 # Global embedder instance
 embedder = AdvancedFaceEmbedder()
+
+@app.route("/", methods=["GET"])
+def index():
+    """Root endpoint that redirects to health check"""
+    return jsonify({
+        "message": "NeoFace Python Face Recognition Service",
+        "version": "1.0.0",
+        "status": "running",
+        "endpoints": {
+            "health": "/health",
+            "embed": "POST /embed"
+        }
+    })
 
 @app.route("/health", methods=["GET"])
 def health():
