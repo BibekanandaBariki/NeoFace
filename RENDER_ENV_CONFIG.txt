@@ -7,3 +7,5 @@ SUPERADMIN_PASSWORD=YOUR_SECURE_SUPERADMIN_PASSWORD_HERE
 NODE_ENV=production
 CORS_ORIGIN=https://neoface-frontend.vercel.app
 PORT=8080
+FACE_SERVICE_URL=https://neoface-python-service.onrender.com
+FACE_SIMILARITY_THRESHOLD=0.75

@@ -68,8 +68,8 @@ pip install -r requirements.txt
 
 1. Create a `.env` file in the backend directory with the following variables:
 ```env
-MONGODB_URI=YOUR_MONGODB_CONNECTION_STRING_HERE
-JWT_SECRET=YOUR_STRONG_RANDOM_SECRET_HERE_(32+_CHARACTERS)
+MONGODB_URI=mongodb://localhost:27017/neoface
+JWT_SECRET=your_jwt_secret_here
 PORT=5000
 ```
 
@@ -97,11 +97,17 @@ cd python_service
 python app.py
 ```
 
+## Deployment
+
+For deployment instructions and troubleshooting, see:
+- [DEPLOYMENT_FIX_GUIDE.md](DEPLOYMENT_FIX_GUIDE.md) - Complete guide to fix deployment issues
+- [RENDER_ENV_CONFIG.txt](RENDER_ENV_CONFIG.txt) - Environment variables for Render deployment
+- [VERCEL_CONFIG.txt](VERCEL_CONFIG.txt) - Environment variables for Vercel deployment
+
 ## Default SuperAdmin Credentials
 
-- Email: YOUR_SUPERADMIN_EMAIL_HERE
-- Password: Set via SUPERADMIN_PASSWORD environment variable
-- Note: You will be prompted to change the password on first login
+- Email: bibekbariki786@gmail.com
+- Password: Attitude321@11
 
 ## Project Structure
 
