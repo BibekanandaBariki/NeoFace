@@ -10,22 +10,48 @@ class FaceRecognitionService {
   async generateEmbedding(imageData, frames = []) {
     try {
       const payload = { frames: frames && frames.length ? frames : [imageData] };
-      console.log(`Generating embedding with ${payload.frames.length} frames`);
+      const numFrames = payload.frames.length;
+      console.log(`Generating embedding with ${numFrames} frames using service: ${this.faceServiceUrl}`);
+
+      // Log first frame preview (first 100 chars) for debugging
+      if (payload.frames[0]) {
+        const firstFramePreview = payload.frames[0].substring(0, 100);
+        console.log(`First frame preview: ${firstFramePreview}...`);
+      }
 
       const resp = await axios.post(`${this.faceServiceUrl}/embed`, payload, {
-        timeout: 120000,
-        headers: { 'Content-Type': 'application/json' }
+        timeout: 180000, // Increased timeout for Render (3 minutes)
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity
       });
 
       if (resp.data && resp.data.embedding && Array.isArray(resp.data.embedding)) {
-        console.log(`Embedding generated successfully. Dimension: ${resp.data.dim}, Processed frames: ${resp.data.processed_frames || 'N/A'}`);
+        console.log(`✅ Embedding generated successfully. Dimension: ${resp.data.dim}, Processed frames: ${resp.data.processed_frames || 'N/A'}/${numFrames}`);
         return resp.data.embedding;
       }
 
-      console.error('Invalid embedding response from face service', resp.data);
+      console.error('❌ Invalid embedding response from face service', {
+        hasData: !!resp.data,
+        hasEmbedding: !!(resp.data && resp.data.embedding),
+        response: resp.data
+      });
       return null;
     } catch (error) {
-      console.error('Error calling face service /embed:', error.response?.data || error.message || error);
+      if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
+        console.error(`❌ Cannot connect to face service at ${this.faceServiceUrl}. Service may be down or unreachable.`);
+      } else if (error.response) {
+        console.error(`❌ Face service error (${error.response.status}):`, {
+          status: error.response.status,
+          data: error.response.data,
+          message: error.response.data?.error || error.response.data?.detail || 'Unknown error'
+        });
+      } else {
+        console.error('❌ Error calling face service /embed:', error.message || error);
+      }
       return null;
     }
   }

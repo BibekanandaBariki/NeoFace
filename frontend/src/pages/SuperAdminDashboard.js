@@ -48,7 +48,6 @@ const SuperAdminDashboard = () => {
   const [editStudentData, setEditStudentData] = useState({});
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [showEditStudentModal, setShowEditStudentModal] = useState(false);
-  const [analytics, setAnalytics] = useState(null);
 
   // Form states
   const [newAdmin, setNewAdmin] = useState({
@@ -141,12 +140,10 @@ const SuperAdminDashboard = () => {
       // Fetch all data in parallel
       const [
         studentsRes,
-        adminsRes,
-        analyticsRes // Add analytics fetch
+        adminsRes
       ] = await Promise.all([
         api.get('/students'),
-        api.get('/users?role=admin,campusadmin,hod'),
-        api.get('/analytics/overview') // Add analytics endpoint
+        api.get('/users?role=admin,campusadmin,hod')
       ]);
 
       const studentsData = studentsRes.data;
@@ -159,7 +156,6 @@ const SuperAdminDashboard = () => {
 
       setStudents(studentsData);
       setAdmins(adminsData);
-      setAnalytics(analyticsRes.data); // Set analytics data
     } catch (error) {
       console.error('Fetch error:', error);
     }

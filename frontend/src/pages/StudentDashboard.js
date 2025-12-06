@@ -14,13 +14,11 @@ const StudentDashboard = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [subjects, setSubjects] = useState([]);
-  const [attendance, setAttendance] = useState([]); // Add back attendance state
   const [timetable, setTimetable] = useState({});
   const [analytics, setAnalytics] = useState(null);
   const [showFaceRegister, setShowFaceRegister] = useState(false);
-  const [faceRegistered, setFaceRegistered] = useState(false); // Add back faceRegistered state
   const [registrationStatus, setRegistrationStatus] = useState('not_registered');
-  const [loading, setLoading] = useState(true); // Add back loading state
+  const [loading, setLoading] = useState(true);
   const [studentInfo, setStudentInfo] = useState(null);
 
   useEffect(() => {
@@ -36,9 +34,6 @@ const StudentDashboard = () => {
       
       // Fetch subjects for this student (already filtered by backend)
       const subjectsRes = await api.get('/subjects');
-      
-      // Fetch attendance for this student (already filtered by backend)
-      const attendanceRes = await api.get('/attendance');
       
       // Initialize timetable data
       let timetableRes = { data: {} };
@@ -141,7 +136,6 @@ const StudentDashboard = () => {
       const analyticsRes = await api.get('/analytics/overview');
 
       setSubjects(subjectsRes.data);
-      setAttendance(attendanceRes.data); // This should work now
       setTimetable(timetableRes.data);
       setAnalytics(analyticsRes.data);
 
@@ -157,10 +151,6 @@ const StudentDashboard = () => {
         regStatus = 'not_registered';
       }
       setRegistrationStatus(regStatus);
-      
-      // Only show as registered if registrationStatus is 'approved' (backend logic ensures faceRegistered is true when approved)
-      // The backend /api/auth/me already checks and sets faceRegistered correctly based on approval status
-      setFaceRegistered(regStatus === 'approved'); // This should work now
     } catch (error) {
       console.error('Fetch error:', error);
       // On error, default to not_registered so user can still try to register

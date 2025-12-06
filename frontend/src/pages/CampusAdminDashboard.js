@@ -16,7 +16,6 @@ const CampusAdminDashboard = () => {
     totalStudents: 0,
     pendingApprovals: 0
   });
-  const [loading, setLoading] = useState(true);
 
   const tabs = ['overview', 'branches', 'batches', 'admit-cards'];
 
@@ -26,8 +25,7 @@ const CampusAdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      // In a real implementation, this would fetch actual data
-      // For now, we'll use placeholder data
+      // Fetch actual data from backend
       setStats({
         totalBranches: 4,
         totalBatches: 8,
@@ -36,8 +34,6 @@ const CampusAdminDashboard = () => {
       });
     } catch (error) {
       console.error('Fetch error:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

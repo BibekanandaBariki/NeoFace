@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify, redirect
+from flask_cors import CORS
 import numpy as np
 import os
 import logging
@@ -8,6 +9,8 @@ from PIL import Image
 import cv2
 
 app = Flask(__name__)
+# Enable CORS for all routes and origins (for Render deployment)
+CORS(app, resources={r"/*": {"origins": "*"}})
 logging.basicConfig(level=logging.INFO)
 
 MODEL_NAME = os.environ.get("DEEPFACE_MODEL", "Facenet")
@@ -26,11 +29,19 @@ class AdvancedFaceEmbedder:
     def preprocess_image(self, image_data):
         """Convert base64 to normalized face image array"""
         try:
-            # Decode base64
-            if image_data.startswith('data:image'):
-                image_data = image_data.split(',')[1]
+            # Handle data URI format (data:image/jpeg;base64,...)
+            if isinstance(image_data, str):
+                if image_data.startswith('data:image'):
+                    # Extract base64 part after comma
+                    image_data = image_data.split(',', 1)[1]
+                
+                # Decode base64 to bytes
+                img_bytes = base64.b64decode(image_data)
+            else:
+                # If already bytes, use directly
+                img_bytes = image_data
             
-            img_bytes = base64.b64decode(image_data)
+            # Open and convert image
             img = Image.open(BytesIO(img_bytes)).convert('RGB')
             
             # Resize to standard size
@@ -199,25 +210,61 @@ def health():
         "features": "HOG+LBP+Color+Spatial"
     })
 
-@app.route("/embed", methods=["POST"])
+@app.route("/embed", methods=["POST", "OPTIONS"])
 def embed():
     """
     Advanced face embedding endpoint using real image processing.
     Achieves 75%+ similarity for same person's different photos.
     """
-    data = request.get_json(force=True)
-    frames = data.get("frames") or []
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
     
-    if not isinstance(frames, list) or len(frames) == 0:
-        return jsonify({"error": "frames array required"}), 400
-
-    embeddings = []
     try:
+        data = request.get_json(force=True)
+        if not data:
+            app.logger.error("No JSON data received")
+            return jsonify({"error": "No data provided"}), 400
+            
+        frames = data.get("frames") or []
+        
+        if not isinstance(frames, list) or len(frames) == 0:
+            app.logger.error("Invalid frames array")
+            return jsonify({"error": "frames array required"}), 400
+
+        app.logger.info(f"Processing {len(frames)} frames with Advanced-CV-CNN method")
+
+        embeddings = []
+        failed_frames = 0
+        frame_errors = []
+        
         for idx, frame in enumerate(frames):
-            embedding = embedder.generate_embedding(frame)
-            if embedding is None:
-                return jsonify({"error": f"Failed to process frame {idx}"}), 400
-            embeddings.append(np.array(embedding, dtype=float))
+            try:
+                embedding = embedder.generate_embedding(frame)
+                if embedding is None:
+                    error_msg = f"Failed to process frame {idx + 1}"
+                    app.logger.warning(error_msg)
+                    frame_errors.append(error_msg)
+                    failed_frames += 1
+                    continue
+                    
+                embeddings.append(np.array(embedding, dtype=float))
+                app.logger.info(f"Successfully processed frame {idx + 1}/{len(frames)}")
+                
+            except Exception as frame_error:
+                error_msg = f"Frame {idx + 1}: {str(frame_error)}"
+                app.logger.warning(error_msg)
+                frame_errors.append(error_msg)
+                failed_frames += 1
+                continue
+        
+        # Check if we have enough successful embeddings
+        if len(embeddings) == 0:
+            error_detail = "; ".join(frame_errors[:3])  # Show first 3 errors
+            app.logger.error(f"No face detected in any frame. Errors: {error_detail}")
+            return jsonify({
+                "error": "No face detected in any frame. Please ensure face is clearly visible.",
+                "detail": error_detail if frame_errors else "Face detection failed"
+            }), 400
         
         # Average multiple frames
         stacked = np.stack(embeddings, axis=0)
@@ -230,12 +277,13 @@ def embed():
         
         embedding_list = avg.astype(float).tolist()
         
-        logging.info(f"✅ Generated embedding from {len(frames)} frames, dim={len(embedding_list)}")
+        app.logger.info(f"✅ Generated embedding from {len(embeddings)}/{len(frames)} frames, dim={len(embedding_list)}")
         
         return jsonify({
             "embedding": embedding_list, 
             "dim": len(embedding_list),
-            "processed_frames": len(frames)
+            "processed_frames": len(embeddings),
+            "failed_frames": failed_frames
         }), 200
         
     except Exception as e:

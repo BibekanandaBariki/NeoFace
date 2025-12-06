@@ -467,9 +467,16 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         // Default to 3 classes per week if not previously set
         initialClasses[subject._id] = subjectWeeklyClasses[subject._id] || 3;
       });
-      setSubjectWeeklyClasses(initialClasses);
+      setSubjectWeeklyClasses(prev => {
+        // Only update if subjects changed (avoid unnecessary updates)
+        const hasChanges = subjects.some(subject => 
+          !(subject._id in prev) || prev[subject._id] !== (initialClasses[subject._id] || 3)
+        );
+        return hasChanges ? { ...prev, ...initialClasses } : prev;
+      });
     }
-  }, [subjects, subjectWeeklyClasses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subjects]);
 
   // Handle subject weekly class count change
   const handleSubjectClassCountChange = (subjectId, count) => {
@@ -534,10 +541,6 @@ const WeeklyTimetableGenerator = ({ onBack }) => {
         setGeneratedTimetable(response.data.timetable);
         const scheduled = response.data.timetable.totalPeriods;
         const requested = totalClasses;
-        if (scheduled < requested) {
-          {/* setSuccess(`Timetable generated with ${scheduled} of ${requested} classes scheduled. Some classes could not be scheduled due to availability constraints.`); */}
-          {/* setSuccess(`Timetable generated successfully! Scheduled all ${scheduled} classes.`); */}
-        }
         // Handle conflict report
         let errorMessage = response.data.message || 'Failed to generate timetable';
         if (response.data.issues && response.data.issues.length > 0) {
