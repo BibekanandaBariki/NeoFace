@@ -11,9 +11,9 @@ class FaceRecognitionService {
     try {
       const payload = { frames: frames && frames.length ? frames : [imageData] };
       console.log(`Generating embedding with ${payload.frames.length} frames`);
-      
+
       const resp = await axios.post(`${this.faceServiceUrl}/embed`, payload, {
-        timeout: 30000,
+        timeout: 120000,
         headers: { 'Content-Type': 'application/json' }
       });
 

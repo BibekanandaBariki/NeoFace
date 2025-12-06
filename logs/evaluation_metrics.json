@@ -1,6 +1,6 @@
 {
-  "timestamp": "2025-12-05T19:50:04.824Z",
-  "uptime": 12300028,
+  "timestamp": "2025-12-05T20:30:04.735Z",
+  "uptime": 14699940,
   "metrics": {
     "recognition_times": [
       5085,
@@ -49753,6 +49753,131 @@
         "endpoint": "/login",
         "time": 41,
         "timestamp": "2025-12-05T19:47:11.554Z"
+      },
+      {
+        "endpoint": "/login",
+        "time": 162,
+        "timestamp": "2025-12-05T20:06:08.164Z"
+      },
+      {
+        "endpoint": "/me",
+        "time": 24,
+        "timestamp": "2025-12-05T20:06:08.306Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 33,
+        "timestamp": "2025-12-05T20:06:08.347Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 14,
+        "timestamp": "2025-12-05T20:06:08.367Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 10,
+        "timestamp": "2025-12-05T20:06:08.382Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 3,
+        "timestamp": "2025-12-05T20:06:08.390Z"
+      },
+      {
+        "endpoint": "/section/690f3879186acdfc21512224/A/690f4eed4a9bcca80ccc9eb7",
+        "time": 10,
+        "timestamp": "2025-12-05T20:06:08.405Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 9,
+        "timestamp": "2025-12-05T20:06:08.418Z"
+      },
+      {
+        "endpoint": "/me",
+        "time": 75,
+        "timestamp": "2025-12-05T20:06:38.448Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 23,
+        "timestamp": "2025-12-05T20:06:38.479Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 29,
+        "timestamp": "2025-12-05T20:06:38.513Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 11,
+        "timestamp": "2025-12-05T20:06:38.529Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 5,
+        "timestamp": "2025-12-05T20:06:38.539Z"
+      },
+      {
+        "endpoint": "/section/690f3879186acdfc21512224/A/690f4eed4a9bcca80ccc9eb7",
+        "time": 8,
+        "timestamp": "2025-12-05T20:06:38.551Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 10,
+        "timestamp": "2025-12-05T20:06:38.566Z"
+      },
+      {
+        "endpoint": "/me",
+        "time": 15,
+        "timestamp": "2025-12-05T20:07:08.313Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 17,
+        "timestamp": "2025-12-05T20:07:08.339Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 13,
+        "timestamp": "2025-12-05T20:07:08.362Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 10,
+        "timestamp": "2025-12-05T20:07:08.382Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 6,
+        "timestamp": "2025-12-05T20:07:08.399Z"
+      },
+      {
+        "endpoint": "/section/690f3879186acdfc21512224/A/690f4eed4a9bcca80ccc9eb7",
+        "time": 12,
+        "timestamp": "2025-12-05T20:07:08.420Z"
+      },
+      {
+        "endpoint": "/overview",
+        "time": 13,
+        "timestamp": "2025-12-05T20:07:08.441Z"
+      },
+      {
+        "endpoint": "/me",
+        "time": 236,
+        "timestamp": "2025-12-05T20:25:52.008Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 150,
+        "timestamp": "2025-12-05T20:25:52.399Z"
+      },
+      {
+        "endpoint": "/",
+        "time": 163,
+        "timestamp": "2025-12-05T20:25:52.765Z"
       }
     ],
     "embedding_generation_times": [],
