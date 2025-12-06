@@ -354,7 +354,7 @@ Password: ${studentData.universityId}
 
       // If timetable slots exist, update timetable
       if (newSubject.timetable.length > 0) {
-        await api.put(`/api/timetables/${subjectRes.data._id}`, {
+        await api.put(`/timetables/${subjectRes.data._id}`, {
           timetable: newSubject.timetable
         });
       }
@@ -410,7 +410,7 @@ Password: ${studentData.universityId}
 
   const handleApproveRegistration = async (studentId) => {
     try {
-      await api.post(`/api/face/approve/${studentId}`);
+      await api.post(`/face/approve/${studentId}`);
       fetchDashboardData();
     } catch (error) {
       alert('Failed to approve registration');
@@ -419,7 +419,7 @@ Password: ${studentData.universityId}
 
   const handleRejectRegistration = async (studentId) => {
     try {
-      await api.post(`/api/face/reject/${studentId}`);
+      await api.post(`/face/reject/${studentId}`);
       fetchDashboardData();
     } catch (error) {
       alert('Failed to reject registration');
@@ -431,10 +431,10 @@ Password: ${studentData.universityId}
 
     try {
       // Map frontend type to backend endpoint
-      const endpoint = type === 'students' ? '/api/students' :
-        type === 'subjects' ? '/api/subjects' :
-          type === 'users' ? '/api/users' :
-            `/api/${type}`;
+      const endpoint = type === 'students' ? '/students' :
+        type === 'subjects' ? '/subjects' :
+          type === 'users' ? '/users' :
+            `/${type}`;
 
       await api.delete(`${endpoint}/${id}`);
       fetchDashboardData();
@@ -452,7 +452,7 @@ Password: ${studentData.universityId}
     }
 
     try {
-      await api.put(`/api/users/${editingUser._id}/password`, {
+      await api.put(`/users/${editingUser._id}/password`, {
         newPassword
       });
       alert('Password changed successfully!');
@@ -476,7 +476,7 @@ Password: ${studentData.universityId}
     }
 
     try {
-      const response = await api.put(`/api/face/update/${editingStudent._id}`, {
+      const response = await api.put(`/face/update/${editingStudent._id}`, {
         imageData: frames[0],
         frames: frames
       });
@@ -523,7 +523,7 @@ Password: ${studentData.universityId}
       if (editUserData.universityId) userData.universityId = editUserData.universityId;
       if (editUserData.campusId) userData.assignedCampus = editUserData.campusId;
 
-      await api.put(`/api/users/${editingUser._id}`, userData);
+      await api.put(`/users/${editingUser._id}`, userData);
       alert('User updated successfully!');
       setShowEditUserModal(false);
       setEditingUser(null);
@@ -558,7 +558,7 @@ Password: ${studentData.universityId}
         semester: parseInt(editStudentData.semester, 10),
         year: parseInt(editStudentData.year, 10)
       };
-      await api.put(`/api/students/${editingStudent._id}`, studentData);
+      await api.put(`/students/${editingStudent._id}`, studentData);
       alert('Student updated successfully!');
       setShowEditStudentModal(false);
       setEditingStudent(null);
