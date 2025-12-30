@@ -62,20 +62,20 @@ def embed():
         return jsonify({"status": "ok"}), 200
     
     try:
-    data = request.get_json(force=True)
+        data = request.get_json(force=True)
         if not data:
             app.logger.error("No JSON data received")
             return jsonify({"error": "No data provided"}), 400
             
-    frames = data.get("frames") or []
-    if not isinstance(frames, list) or len(frames) == 0:
+        frames = data.get("frames") or []
+        if not isinstance(frames, list) or len(frames) == 0:
             app.logger.error("Invalid frames array")
-        return jsonify({"error": "frames array required"}), 400
+            return jsonify({"error": "frames array required"}), 400
 
         app.logger.info(f"Processing {len(frames)} frames with model {MODEL_NAME} and backend {BACKEND}")
 
-    embeddings = []
-    failed_frames = 0
+        embeddings = []
+        failed_frames = 0
         frame_errors = []
         
         for idx, f in enumerate(frames):
@@ -112,8 +112,8 @@ def embed():
                 # Continue processing other frames
                 continue
 
-    # Check if we have enough successful embeddings
-    if len(embeddings) == 0:
+        # Check if we have enough successful embeddings
+        if len(embeddings) == 0:
             error_detail = "; ".join(frame_errors[:3])  # Show first 3 errors
             app.logger.error(f"No face detected in any frame. Errors: {error_detail}")
             return jsonify({
@@ -121,26 +121,26 @@ def embed():
                 "detail": error_detail if frame_errors else "Face detection failed"
             }), 400
 
-    # Average and L2-normalize
-    try:
-        stacked = np.stack(embeddings, axis=0)
-        avg = np.mean(stacked, axis=0)
-        norm = np.linalg.norm(avg)
-        if norm > 0:
-            avg = avg / norm
-        embedding_list = avg.astype(float).tolist()
+        # Average and L2-normalize
+        try:
+            stacked = np.stack(embeddings, axis=0)
+            avg = np.mean(stacked, axis=0)
+            norm = np.linalg.norm(avg)
+            if norm > 0:
+                avg = avg / norm
+            embedding_list = avg.astype(float).tolist()
             
             app.logger.info(f"Successfully generated embedding. Dimension: {len(embedding_list)}, Processed: {len(embeddings)}/{len(frames)} frames")
             
-        return jsonify({
-            "embedding": embedding_list, 
-            "dim": len(embedding_list),
-            "processed_frames": len(embeddings),
-            "failed_frames": failed_frames
-        }), 200
-    except Exception as e:
-        app.logger.exception("Embedding aggregation error")
-        return jsonify({"error": "failed to aggregate embeddings", "detail": str(e)}), 500
+            return jsonify({
+                "embedding": embedding_list, 
+                "dim": len(embedding_list),
+                "processed_frames": len(embeddings),
+                "failed_frames": failed_frames
+            }), 200
+        except Exception as e:
+            app.logger.exception("Embedding aggregation error")
+            return jsonify({"error": "failed to aggregate embeddings", "detail": str(e)}), 500
             
     except Exception as e:
         app.logger.exception("DeepFace error in embed endpoint")
