@@ -557,20 +557,20 @@ router.post('/generate', auth, authorize('admin', 'superadmin'), async (req, res
     });
 
     // Validation
-    if (!university || !campus || !school || !program || !course || !branch || 
-        !batch || !semester || !section || !effectiveFrom || !configuration) {
+    if (!university || !campus || !school || !program || !course || !branch ||
+      !batch || !semester || !section || !effectiveFrom || !configuration) {
       console.log('Validation failed: Missing required fields');
-      return res.status(400).json({ 
-        message: 'Please provide all required fields for timetable generation' 
+      return res.status(400).json({
+        message: 'Please provide all required fields for timetable generation'
       });
     }
 
     // Validate configuration structure
-    const { 
-      dailyHours, 
-      offDay, 
-      breaks = [], 
-      teacherAvailability = [], 
+    const {
+      dailyHours,
+      offDay,
+      breaks = [],
+      teacherAvailability = [],
       roomAvailability = [],
       rooms = []
     } = configuration;
@@ -586,22 +586,22 @@ router.post('/generate', auth, authorize('admin', 'superadmin'), async (req, res
 
     if (!dailyHours || !dailyHours.startTime || !dailyHours.endTime) {
       console.log('Validation failed: Missing daily hours');
-      return res.status(400).json({ 
-        message: 'Please provide daily college hours (start and end time)' 
+      return res.status(400).json({
+        message: 'Please provide daily college hours (start and end time)'
       });
     }
 
     // Validate that rooms are provided
     if (!rooms || rooms.length === 0) {
       console.log('Validation failed: No rooms provided');
-      return res.status(400).json({ 
-        message: 'Please provide at least one room for timetable generation' 
+      return res.status(400).json({
+        message: 'Please provide at least one room for timetable generation'
       });
     }
 
     // Use the advanced timetable generator
     const generator = new TimetableGenerator();
-    
+
     // Initialize with configuration
     console.log('Initializing timetable generator...');
     await generator.initialize({
@@ -627,7 +627,7 @@ router.post('/generate', auth, authorize('admin', 'superadmin'), async (req, res
       const transformedSchedule = result.timetable.map(dayObj => ({
         dayOfWeek: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].indexOf(dayObj.day),
         dayName: dayObj.day,
-        slots: dayObj.slots.flatMap(slot => 
+        slots: dayObj.slots.flatMap(slot =>
           slot.assignments.map((assignment, index) => ({
             slotNumber: slot.slotNumber,
             startTime: slot.startTime,
@@ -660,8 +660,8 @@ router.post('/generate', auth, authorize('admin', 'superadmin'), async (req, res
       console.log(`Timetable generation failed with ${result.unscheduledSessions.length} unscheduled sessions`);
       // Generate conflict report
       const conflictReport = generator.generateConflictReport(result.unscheduledSessions);
-      
-      res.status(400).json({ 
+
+      res.status(400).json({
         success: false,
         message: conflictReport.message,
         issues: conflictReport.issues,
@@ -671,9 +671,9 @@ router.post('/generate', auth, authorize('admin', 'superadmin'), async (req, res
     }
   } catch (error) {
     console.error('Timetable generation error:', error);
-    res.status(500).json({ 
-      message: 'Server error during timetable generation', 
-      error: error.message 
+    res.status(500).json({
+      message: 'Server error during timetable generation',
+      error: error.message
     });
   }
 });
@@ -757,21 +757,21 @@ async function generateWeeklyTimetableLegacy(params) {
   // Calculate time slots (assuming 1-hour periods)
   const startTime = dailyHours.startTime || '09:30';
   const endTime = dailyHours.endTime || '17:30';
-  
+
   // Calculate time slots based on daily hours
   const timeSlots = [];
   let currentTime = startTime;
-  
+
   while (currentTime < endTime) {
     const [hours, minutes] = currentTime.split(':').map(Number);
     const nextHours = hours + 1;
     const nextTime = `${nextHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    
+
     timeSlots.push({
       startTime: currentTime,
       endTime: nextTime
     });
-    
+
     currentTime = nextTime;
   }
 
@@ -779,10 +779,10 @@ async function generateWeeklyTimetableLegacy(params) {
   // Each subject should appear the number of times specified in subjectWeeklyClasses
   const subjectInstances = [];
   subjects.forEach(subject => {
-    const requiredClasses = subjectWeeklyClasses && subjectWeeklyClasses[subject._id] 
-      ? subjectWeeklyClasses[subject._id] 
+    const requiredClasses = subjectWeeklyClasses && subjectWeeklyClasses[subject._id]
+      ? subjectWeeklyClasses[subject._id]
       : 3; // Default to 3 classes per week
-    
+
     // Add this subject the required number of times to the schedule list
     for (let i = 0; i < requiredClasses; i++) {
       subjectInstances.push({
@@ -801,10 +801,10 @@ async function generateWeeklyTimetableLegacy(params) {
   // Calculate total available slots
   const totalAvailableSlots = workingDays.length * timeSlots.length;
   const totalInstances = shuffledInstances.length;
-  
+
   // If we have more classes than slots, we'll need to distribute them as evenly as possible
-  const instancesToSchedule = totalInstances <= totalAvailableSlots ? 
-    shuffledInstances : 
+  const instancesToSchedule = totalInstances <= totalAvailableSlots ?
+    shuffledInstances :
     shuffledInstances.slice(0, totalAvailableSlots);
 
   // Create a list of valid time slots for each day (excluding breaks)
@@ -812,7 +812,7 @@ async function generateWeeklyTimetableLegacy(params) {
   workingDays.forEach(dayName => {
     validTimeSlotsPerDay[dayName] = timeSlots.filter(slot => {
       // Check if this time slot is a break for this specific day
-      return !breaks.some(breakItem => 
+      return !breaks.some(breakItem =>
         breakItem.day === dayName && breakItem.startTime <= slot.startTime && breakItem.endTime > slot.startTime
       );
     });
@@ -822,38 +822,45 @@ async function generateWeeklyTimetableLegacy(params) {
   const isTeacherAvailable = (teacherId, dayName, startTime, endTime) => {
     // Check global timetable conflicts
     if (globalTeacherBusySlots[teacherId] && globalTeacherBusySlots[teacherId][dayName]) {
-      const conflicts = globalTeacherBusySlots[teacherId][dayName].some(busySlot => 
+      const conflicts = globalTeacherBusySlots[teacherId][dayName].some(busySlot =>
         startTime < busySlot.endTime && endTime > busySlot.startTime
       );
       if (conflicts) return false;
     }
 
-    // If no availability is provided, default to college hours
-    if (!teacherAvailability || teacherAvailability.length === 0) {
-      return true; // Available during college hours by default
+    // 1. Check specific availability constraints provided in config
+    if (teacherAvailability && teacherAvailability.length > 0) {
+      // Check if THIS teacher has ANY availability constraints ANYWHERE
+      const teacherConstraints = teacherAvailability.filter(entry =>
+        entry.teacherId === teacherId
+      );
+
+      // If this teacher has availability constraints, they can ONLY be scheduled during those windows
+      if (teacherConstraints.length > 0) {
+        // Check if there's a constraint for this specific day
+        const dayAvailability = teacherConstraints.filter(entry => entry.day === dayName);
+
+        // If no constraint for this day, teacher is NOT available on this day at all
+        if (dayAvailability.length === 0) {
+          return false;
+        }
+
+        // If there are constraints for this day, check if the time slot fits within any of them
+        const isWithin = dayAvailability.some(entry =>
+          startTime >= entry.startTime && endTime <= entry.endTime
+        );
+        if (!isWithin) return false;
+      }
     }
-    
-    // Check if teacher has any availability entries for this day
-    const dayAvailability = teacherAvailability.filter(entry => 
-      entry.teacherId === teacherId && entry.day === dayName
-    );
-    
-    // If no specific availability for this day, default to college hours
-    if (dayAvailability.length === 0) {
-      return true;
-    }
-    
-    // Check if the time slot falls within any of the teacher's available periods
-    return dayAvailability.some(entry => 
-      startTime >= entry.startTime && endTime <= entry.endTime
-    );
+
+    return true;
   };
 
   // Function to check if a room is available at a specific time on a specific day
   const isRoomAvailable = (roomName, dayName, startTime, endTime) => {
     // Check global timetable conflicts
     if (globalRoomBusySlots[roomName] && globalRoomBusySlots[roomName][dayName]) {
-      const conflicts = globalRoomBusySlots[roomName][dayName].some(busySlot => 
+      const conflicts = globalRoomBusySlots[roomName][dayName].some(busySlot =>
         startTime < busySlot.endTime && endTime > busySlot.startTime
       );
       if (conflicts) return false;
@@ -863,27 +870,27 @@ async function generateWeeklyTimetableLegacy(params) {
     if (!roomAvailability || roomAvailability.length === 0) {
       return true;
     }
-    
+
     // Check if room has any unavailable periods for this day
-    const unavailablePeriods = roomAvailability.filter(entry => 
+    const unavailablePeriods = roomAvailability.filter(entry =>
       entry.room === roomName && entry.day === dayName
     );
-    
+
     // If no unavailable periods for this room on this day, it's available
     if (unavailablePeriods.length === 0) {
       return true;
     }
-    
+
     // Check if the time slot conflicts with any unavailable periods
-    return !unavailablePeriods.some(entry => 
+    return !unavailablePeriods.some(entry =>
       (startTime < entry.endTime && endTime > entry.startTime)
     );
   };
 
   // Function to check if a time slot conflicts with existing scheduled classes
   const hasTimeConflict = (day, startTime, endTime, teacherId, roomName) => {
-    return day.slots.some(slot => 
-      (slot.startTime < endTime && slot.endTime > startTime) && 
+    return day.slots.some(slot =>
+      (slot.startTime < endTime && slot.endTime > startTime) &&
       (slot.faculty === teacherId || slot.room === roomName)
     );
   };
@@ -893,17 +900,17 @@ async function generateWeeklyTimetableLegacy(params) {
   const totalInstancesToSchedule = shuffledInstances.length;
   let attempts = 0;
   const maxAttempts = totalInstancesToSchedule * 10; // Prevent infinite loops
-  
+
   while (instanceIndex < totalInstancesToSchedule && attempts < maxAttempts) {
     attempts++;
-    
+
     // Get the current subject instance to schedule
     const subject = shuffledInstances[instanceIndex];
-    
+
     // Get faculty information
     let faculty = null;
     let facultyName = 'TBA';
-    
+
     if (subject.faculty && subject.faculty.length > 0) {
       // Get the first faculty member
       const firstFaculty = subject.faculty[0];
@@ -912,30 +919,30 @@ async function generateWeeklyTimetableLegacy(params) {
         facultyName = firstFaculty.teacher.name || 'TBA';
       }
     }
-    
+
     let classScheduled = false;
-    
+
     // Try to find a suitable time slot across all days
     for (let dayIndex = 0; dayIndex < workingDays.length && !classScheduled; dayIndex++) {
       const day = schedule[dayIndex];
       const dayName = day.dayName;
       const validSlots = validTimeSlotsPerDay[dayName];
-      
+
       // Try each valid time slot for this day
       for (let slotIndex = 0; slotIndex < validSlots.length && !classScheduled; slotIndex++) {
         const slot = validSlots[slotIndex];
-        
+
         // Generate a room name (rotating through available rooms)
         const roomName = `Room ${String.fromCharCode(65 + (instanceIndex % 5))}`;
-        
+
         // Check all constraints:
         // 1. Teacher availability
         // 2. Room availability
         // 3. No time conflicts with already scheduled classes
         if (isTeacherAvailable(faculty ? faculty._id : null, dayName, slot.startTime, slot.endTime) &&
-            isRoomAvailable(roomName, dayName, slot.startTime, slot.endTime) &&
-            !hasTimeConflict(day, slot.startTime, slot.endTime, faculty ? faculty._id : null, roomName)) {
-          
+          isRoomAvailable(roomName, dayName, slot.startTime, slot.endTime) &&
+          !hasTimeConflict(day, slot.startTime, slot.endTime, faculty ? faculty._id : null, roomName)) {
+
           // Schedule the class
           day.slots.push({
             slotNumber: day.slots.length + 1,
@@ -950,14 +957,14 @@ async function generateWeeklyTimetableLegacy(params) {
             isBreak: false,
             breakType: 'none'
           });
-          
+
           instanceIndex++;
           classScheduled = true;
           break;
         }
       }
     }
-    
+
     // If we couldn't schedule this class, try the next one
     if (!classScheduled) {
       // Move this instance to the end of the queue to try again later
